@@ -128,13 +128,13 @@ python3 -m pip install pyserial
   主机侧测试用 §8 逐字节向量 + EEPROM 失败注入覆盖；
 - 已完成服务层 `services/power`（Stop 档位与进出）、`services/watchdog`
   （IWDG 4 s、复位原因归并、BKP2R 故障锁存）与 `services/state_indicator`
-  （状态点掩码、极低电量 1 Hz 闪烁、故障清空数字位）；
+  （状态点掩码、极低电量 1 Hz 闪烁、故障/未对时清空数字位）；
 - 已完成主循环接线（`main.c`）：空闲时按"口令窗口边界 / 显示重写（2 s，
   极低电量 1 s）/ 电量采集（10 min）"取最早期限武装 RTC 闹钟进 Stop，
   PA10 EXTI 唤醒插头会话；会话期间保持清醒，口令只在窗口边界重算，
   对时/写种子成功后立即刷新显示并清除故障锁存；RTC 不可用时降级为
   仅 EXTI 唤醒并锁存故障（不进入 IWDG 复位循环）；
-  主机侧测试合计 5981 项断言，全绿；
+  主机侧测试合计 5982 项断言，全绿；
 - 已完成上位机配置工具 `tools/provision`（`ping`/`get-time`/`set-time`/`status`/
   `read-meta`/`write-seed`/`erase`/`set-calib`/`verify`）：会话层按 §7 实现
   前导码、重传与会话恢复，命令层做写后读回与 `config_crc16` 复算，`verify`

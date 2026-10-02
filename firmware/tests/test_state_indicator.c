@@ -34,14 +34,16 @@ void test_state_indicator(void)
     CHECK_U32(state_indicator_dot_mask(&no_seed, 0U), LCD_DOT_NO_SEED);
     CHECK(state_indicator_digits_blanked(&no_seed));
 
-    /* 时间不可信：NEVER_SET 与 STALE 都点 DOT2，数字仍按 RTC 走时显示 */
+    /* 时间不可信：NEVER_SET 与 STALE 都点 DOT2，且数字位留空
+       （按错误走时算出的码必然无效，不得显示） */
     const state_indicator_state_t never_set =
         make(true, CLOCK_RTC_TIME_NEVER_SET, BATTERY_LEVEL_NORMAL, false);
     const state_indicator_state_t stale =
         make(true, CLOCK_RTC_TIME_STALE, BATTERY_LEVEL_NORMAL, false);
     CHECK_U32(state_indicator_dot_mask(&never_set, 0U), LCD_DOT_NEED_SYNC);
     CHECK_U32(state_indicator_dot_mask(&stale, 0U), LCD_DOT_NEED_SYNC);
-    CHECK(!state_indicator_digits_blanked(&never_set));
+    CHECK(state_indicator_digits_blanked(&never_set));
+    CHECK(state_indicator_digits_blanked(&stale));
 
     /* 低电量：DOT4 常亮，与秒相位无关 */
     const state_indicator_state_t low =

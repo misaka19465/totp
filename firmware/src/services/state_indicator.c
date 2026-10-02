@@ -52,5 +52,9 @@ bool state_indicator_digits_blanked(const state_indicator_state_t *state)
     if (state == NULL) {
         return true;
     }
-    return state->fault_latched || !state->seed_present;
+    /* NOTE: 时间不可信（从未对时/超期/读取失败）时按错误走时算出的码必然无效，
+     *       与故障同样留空数字位，避免参与者记录到无效码。 */
+    return state->fault_latched || !state->seed_present ||
+           (state->time_flags &
+            (CLOCK_RTC_TIME_NEVER_SET | CLOCK_RTC_TIME_STALE)) != 0U;
 }

@@ -354,8 +354,8 @@ CRC-16/CCITT-FALSE( algo || digits || period_le || secret_len || secret_ascii )
 | 位 | 名称 | 含义 | 对应显示 |
 |----|------|------|----------|
 | 0 | `SEED_PRESENT` | 已写入有效的点位配置 | DOT1 灭 |
-| 1 | `RTC_NEVER_SET` | 上电后从未对时 | DOT2 亮 |
-| 2 | `RTC_STALE` | 距上次对时超过阈值（暂定 30 天） | DOT2 亮 |
+| 1 | `RTC_NEVER_SET` | 上电后从未对时 | DOT2 亮，数字位留空 |
+| 2 | `RTC_STALE` | 距上次对时超过阈值（暂定 30 天） | DOT2 亮，数字位留空 |
 | 3 | `LOW_BATTERY` | 低电量 | DOT4 亮 |
 | 4 | `CRITICAL_BATTERY` | 极低电量 | DOT4 亮 |
 | 5 | `FAULT_LATCHED` | 故障锁存（含 IWDG 复位、自检失败） | DOT5 亮 |

@@ -34,7 +34,8 @@ uint8_t state_indicator_dot_mask(const state_indicator_state_t *state,
 /**
  * @brief  数字位是否应留空。
  * @param  state 状态快照；不得为 NULL。
- * @return 故障锁存或未写入种子时返回 true（当前没有可信的码可显示）。
+ * @return 故障锁存、时间不可信（NEVER_SET/STALE）或未写入种子时返回 true
+ *         （当前没有可信的码可显示）。
  */
 bool state_indicator_digits_blanked(const state_indicator_state_t *state);
 
