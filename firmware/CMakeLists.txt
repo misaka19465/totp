@@ -65,6 +65,7 @@ add_executable(totp_token.elf
   src/app/base32.c
   src/app/hmac_sha1.c
   src/app/keystore.c
+  src/app/proto.c
   src/app/totp.c
   src/common/crc16.c
   src/drivers/battery.c

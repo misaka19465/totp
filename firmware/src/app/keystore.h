@@ -2,10 +2,14 @@
  * @file    keystore.h
  * @brief   单槽点位配置的持久化存储（数据 EEPROM，断电不丢）。
  *
- * 记录内容 = TOTP 参数（algo/digits/period）+ 解码后的种子 + config_crc16。
- * 存储格式与协议无关，字段约束来自 docs/serial-protocol.md §5.6：
+ * 记录内容 = TOTP 参数（algo/digits/period）+ 解码后的种子 + Base32 字符数
+ * + config_crc16。存储格式与协议无关，字段约束来自 docs/serial-protocol.md §5.6：
  *   algo = 1（HMAC-SHA1）、digits 1..6、period 15..300 s、
  *   Base32 种子 1..56 字符（解码后 ≤35 字节）。
+ *
+ * NOTE: READ_META 的 secret_len 按规范 §5.7 是 **Base32 字符数**，而字符数
+ *       并不能从解码字节数反推（同一字节串可能有多种合法字符数写法），
+ *       因此记录必须原样保存写入时的字符数 secret_chars。
  *
  * 记录完整性由独立于 config_crc16 的 CRC 保护（同一 CRC-16/CCITT-FALSE）：
  *   config_crc16 是**上位机可见的配置指纹**，覆盖 ASCII 种子，由 proto 层
@@ -37,6 +41,9 @@
 /** TOTP 步长范围（秒） */
 #define KEYSTORE_PERIOD_MIN_S     15U
 #define KEYSTORE_PERIOD_MAX_S     300U
+/** Base32 种子字符数范围（serial-protocol.md §5.6） */
+#define KEYSTORE_SECRET_CHARS_MIN 1U
+#define KEYSTORE_SECRET_CHARS_MAX 56U
 /** 解码后的种子字节数上限（56 Base32 字符 → 35 字节） */
 #define KEYSTORE_SECRET_MAX_BYTES 35U
 
@@ -45,7 +52,8 @@ typedef struct {
     uint8_t  algo;                              /**< 仅 KEYSTORE_ALGO_SHA1            */
     uint8_t  digits;                            /**< 1..6                             */
     uint16_t period_s;                          /**< 15..300                          */
-    uint8_t  secret_len;                        /**< 1..35                            */
+    uint8_t  secret_chars;                      /**< Base32 字符数 1..56（READ_META 回显） */
+    uint8_t  secret_len;                        /**< 解码后的字节数 1..35             */
     uint8_t  secret[KEYSTORE_SECRET_MAX_BYTES]; /**< 解码后的种子字节                 */
     uint16_t config_crc16;                      /**< 协议指纹，由调用方计算（可任意值） */
 } keystore_config_t;

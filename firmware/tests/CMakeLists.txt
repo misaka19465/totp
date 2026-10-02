@@ -12,6 +12,7 @@ enable_testing()
 
 add_executable(test_app
   test_main.c
+  fake_clock_rtc.c
   fake_ht1621.c
   fake_nvm.c
   fake_plug_detect.c
@@ -20,12 +21,14 @@ add_executable(test_app
   test_hmac_sha1.c
   test_keystore.c
   test_lcd_render.c
+  test_proto.c
   test_rtc_time.c
   test_totp.c
   test_uart_link.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/app/base32.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/app/hmac_sha1.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/app/keystore.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../src/app/proto.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/app/totp.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/common/crc16.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/drivers/lcd_render.c

@@ -39,6 +39,7 @@ static bool make_config(keystore_config_t *cfg, uint8_t digits, uint16_t config_
     cfg->algo = KEYSTORE_ALGO_SHA1;
     cfg->digits = digits;
     cfg->period_s = 30U;
+    cfg->secret_chars = SEED_TEXT_LEN;
     cfg->config_crc16 = config_crc;
     const int decoded = base32_decode(SEED_TEXT, SEED_TEXT_LEN,
                                       cfg->secret, sizeof cfg->secret);
@@ -82,6 +83,7 @@ void test_keystore(void)
     CHECK(back.algo == KEYSTORE_ALGO_SHA1);
     CHECK(back.digits == 6U);
     CHECK(back.period_s == 30U);
+    CHECK(back.secret_chars == SEED_TEXT_LEN);
     CHECK(back.secret_len == 10U);
     CHECK(back.config_crc16 == 0xB638U);
     CHECK(memcmp(back.secret, cfg.secret, 10U) == 0);
@@ -124,6 +126,16 @@ void test_keystore(void)
     }
     CHECK(!keystore_write(NULL));
 
+    /* 字符数越界或与解码长度不自洽（8×5/8=5 ≠ 10）一律拒绝 */
+    keystore_config_t bad_chars = cfg;
+    bad_chars.secret_chars = 0U;
+    CHECK(!keystore_write(&bad_chars));
+    bad_chars.secret_chars = 57U;
+    CHECK(!keystore_write(&bad_chars));
+    bad_chars.secret_chars = 8U;
+    CHECK(!keystore_write(&bad_chars));
+    CHECK(keystore_load(&back));
+
     /* ---- 换配置（digits=4）真的落盘 ---- */
     CHECK(make_config(&cfg, 4U, 0xDD5EU));
     CHECK(keystore_write(&cfg));
@@ -162,6 +174,7 @@ void test_keystore(void)
     max_cfg.algo = KEYSTORE_ALGO_SHA1;
     max_cfg.digits = 6U;
     max_cfg.period_s = 300U;
+    max_cfg.secret_chars = KEYSTORE_SECRET_CHARS_MAX;
     max_cfg.secret_len = KEYSTORE_SECRET_MAX_BYTES;
     for (uint8_t i = 0U; i < KEYSTORE_SECRET_MAX_BYTES; i++) {
         max_cfg.secret[i] = (uint8_t)(i + 1U);
@@ -169,6 +182,7 @@ void test_keystore(void)
     max_cfg.config_crc16 = 0x1234U;
     CHECK(keystore_write(&max_cfg));
     CHECK(keystore_load(&back));
+    CHECK(back.secret_chars == KEYSTORE_SECRET_CHARS_MAX);
     CHECK(back.secret_len == KEYSTORE_SECRET_MAX_BYTES);
     CHECK(back.period_s == 300U);
     CHECK(memcmp(back.secret, max_cfg.secret, KEYSTORE_SECRET_MAX_BYTES) == 0);

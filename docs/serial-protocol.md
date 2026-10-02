@@ -407,7 +407,7 @@ EEPROM 写周期在 STM32L0 上为毫秒级（字级擦/写各典型 3.3 ms）�
 |------|---------------|
 | CRC 自测 `"123456789"` | `0x29B1` |
 | `PING` 请求，SEQ=0 | `aa 01 00 00 ac fb` |
-| `PING` 响应，SEQ=0，proto=1，fw=0x0001，max=64，flags=0，uptime=0 | `aa 81 00 0b 00 01 00 01 40 00 00 00 00 00 00 38 6e` |
+| `PING` 响应，SEQ=0，proto=1，fw=0x0100（major=1/minor=0），max=64，flags=0，uptime=0 | `aa 81 00 0b 00 01 00 01 40 00 00 00 00 00 00 38 6e` |
 | `SET_TIME` 请求，SEQ=0x2A，`2026-10-02T00:00:00Z`=1790899200000 ms | `aa 03 2a 08 00 20 e9 f9 a0 01 00 00 86 cf` |
 | `SET_TIME` 响应，SEQ=0x2A，状态 OK，回读同一时间 | `aa 83 2a 09 00 00 20 e9 f9 a0 01 00 00 ce 41` |
 | `GET_STATUS` 响应，SEQ=0x2B，flags=0，reset=POR，2900 mV，level=1，从未对时 | `aa 84 2b 0b 00 00 00 00 54 0b 01 ff ff ff ff 7c 2f` |
@@ -434,6 +434,9 @@ EEPROM 写周期在 STM32L0 上为毫秒级（字级擦/写各典型 3.3 ms）�
 1. 固件 `drivers/uart_link.{h,c}`（字节收发 + 帧收发 + 超时）与
    `drivers/plug_detect.{h,c}`（EXTI 唤醒 + 唤醒窗口）——**已实现**：
    USART2 硬件层为 `drivers/usart2_hw.{h,c}`，帧/会话逻辑含主机侧测试；
-2. 固件 `app/proto.{h,c}`（命令分派 + 校验 + 与 keystore/clock_rtc 对接）；
+2. 固件 `app/proto.{h,c}`（命令分派 + 校验 + 与 keystore/clock_rtc 对接）——
+   **已实现**：§5 全部 8 条命令，响应按 §8 向量逐字节验证；`GET_STATUS`/
+   `PING` 的状态位由调用方传入的状态快照（电量/复位原因/故障锁存/看门狗）
+   与 `keystore`/`clock_rtc` 查询组装，电量与复位原因的采集属电源/看门狗层；
 3. 上位机 `tools/provision/provision.py`（本规范 §6 的 CLI：ping/set-time/
    write-seed/read-meta/erase/status/verify），依赖 `pyserial`，参考编解码已就绪。

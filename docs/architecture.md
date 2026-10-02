@@ -55,7 +55,7 @@ firmware/src/
 │   ├── hmac_sha1.{h,c}    哈希原语
 │   ├── base32.{h,c}       种子解码
 │   ├── keystore.{h,c}     EEPROM 中的单点位配置存储（已实现）
-│   └── proto.{h,c}        串口协议状态机（待实现）
+│   └── proto.{h,c}        串口协议命令层（已实现）
 └── services/              横切关注点
     ├── clock_rtc.{h,c}    RTC 读写、校准、对时（已实现）
     ├── rtc_time.{h,c}     日历/亚秒/校准纯换算（已实现，主机侧测试）
@@ -343,12 +343,14 @@ CN1 没有检测触点。可选方案：
 
 > 状态：第 2 步的驱动层已完成（`lcd_render`/`battery`/`uart_link`/`plug_detect`，
 > 其中 USART2 硬件层独立为 `usart2_hw`），主机侧测试覆盖帧编解码、CRC、重同步、
-> 唤醒窗口与 10 s 会话超时；第 4 步已完成 HMAC-SHA1/TOTP 与 `keystore`
+> 唤醒窗口与 10 s 会话超时；第 4 步已完成 HMAC-SHA1/TOTP、`keystore`
 > （含 `drivers/nvm` 字级擦写、独立记录 CRC、幂等写入与失败回滚，主机侧测试
-> 覆盖损坏/掉电场景）；第 3 步已完成 `clock_rtc`（LSE 启振、UTC 毫秒读写、
-> 用 `RTC_SHIFTR` 对齐亚秒（`RTC_SSR` 只读）、备份寄存器记录对时状态、
-> CALR 校准折算，纯换算拆入 `services/rtc_time` 并做主机侧测试），
-> `power`/`watchdog` 与 `proto` 待实现；主循环/电源状态机的完整接线留待其后。
+> 覆盖损坏/掉电场景）与 `proto`（§5 全部 8 条命令的命令分派、字段校验、
+> 响应组帧及与 keystore/clock_rtc 对接，用 §8 逐字节向量验证）；第 3 步已完成
+> `clock_rtc`（LSE 启振、UTC 毫秒读写、用 `RTC_SHIFTR` 对齐亚秒
+> （`RTC_SSR` 只读）、备份寄存器记录对时状态、CALR 校准折算，纯换算拆入
+> `services/rtc_time` 并做主机侧测试），`power`/`watchdog` 待实现；
+> 主循环/电源状态机的完整接线留待其后。
 
 ## 11. 待实测与标定项
 

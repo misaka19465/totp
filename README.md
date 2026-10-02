@@ -90,14 +90,20 @@ ctest --test-dir firmware/tests/build --output-on-failure
   （帧编解码、CRC、重同步、唤醒/会话超时、EXTI 唤醒），主机侧测试合计
   340 项断言，全绿；
 - 已完成应用层 `app/keystore`（数据 EEPROM 单槽配置记录：magic/版本/独立
-  记录 CRC、参数校验、幂等写入、写后读回比对与失败回滚），配套
+  记录 CRC、参数校验、幂等写入、写后读回比对与失败回滚；记录同时保存
+  Base32 字符数以支持 READ_META 回显，记录版本升为 v2，旧 v1 记录
+  按未写入处理（需重写种子），配套
   `drivers/nvm`（EEPROM 字级擦写）与公共 `common/crc16`；
-  主机侧测试合计 412 项断言，全绿；
 - 已完成服务层 `services/clock_rtc`（LSE 启振、RTC 1 Hz + 1/256 s 亚秒、
   UTC 毫秒读写、`RTC_SHIFTR` 亚秒对齐、备份寄存器记录对时状态与
   TRUSTED/NEVER_SET/STALE 标志、CALR 数字校准折算），纯换算部分
   `services/rtc_time` 配有主机侧测试（含 2000..2099 全时段逐日往返）；
   主机侧测试合计 5829 项断言，全绿；`main.c` 开机接入 RTC 初始化与
   DOT5 故障告警；
-- 其余功能（电源/看门狗、proto、配置工具）尚未实现，
+- 已完成应用层 `app/proto`（serial-protocol.md §5 全部 8 条命令的分派、
+  字段校验与响应组帧：PING/GET_TIME/SET_TIME/GET_STATUS/WRITE_SLOT/
+  READ_META/ERASE_SLOT/SET_CALIB），与 keystore/clock_rtc 对接；
+  主机侧测试用 §8 逐字节向量 + EEPROM 失败注入覆盖，合计 5940 项断言，
+  全绿；
+- 其余功能（电源/看门狗、主循环接线、配置工具 `tools/provision`）尚未实现，
   落地顺序见 `docs/architecture.md` §10。

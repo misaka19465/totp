@@ -10,18 +10,21 @@
 
 /* ---- 记录字节布局（52 B = 13 字，全部小端） ----
  *   0  u16 magic = 0x4B53（'S''K'，非 0 即"可能已写入"）
- *   2  u8  version = 1
+ *   2  u8  version = 2
  *   3  u8  flags = bit0 SEED_PRESENT，其余为 0
  *   4  u8  algo
  *   5  u8  digits
  *   6  u16 period_s
- *   8  u8  secret_len
- *   9  u8  reserved0 = 0
+ *   8  u8  secret_len（解码后的字节数）
+ *   9  u8  secret_chars（Base32 字符数，READ_META 回显）
  *  10  u16 config_crc16
  *  12  35B secret（不足补 0）
  *  47  u8  reserved1 = 0
  *  48  u16 record_crc16（覆盖偏移 0..47）
  *  50  u16 reserved2 = 0
+ *
+ * NOTE: v1（无 secret_chars，偏移 9 为 0）从未发布，直接升版为 v2 并拒绝 v1
+ *       记录（按未写入种子处理）；不提供 v1 迁移路径。
  */
 enum {
     KS_OFF_MAGIC = 0,
@@ -31,6 +34,7 @@ enum {
     KS_OFF_DIGITS = 5,
     KS_OFF_PERIOD = 6,
     KS_OFF_SECRET_LEN = 8,
+    KS_OFF_SECRET_CHARS = 9,
     KS_OFF_CONFIG_CRC = 10,
     KS_OFF_SECRET = 12,
     KS_OFF_RECORD_CRC = 48,
@@ -38,7 +42,7 @@ enum {
 };
 
 #define KEYSTORE_MAGIC      0x4B53U
-#define KEYSTORE_VERSION    1U
+#define KEYSTORE_VERSION    2U
 #define KS_FLAG_SEED_PRESENT 0x01U
 
 _Static_assert(KEYSTORE_RECORD_BYTES == 52U, "记录布局与 KEYSTORE_RECORD_WORDS 必须一致");
@@ -91,14 +95,22 @@ static bool config_in_range(const keystore_config_t *cfg)
     if (cfg->secret_len < 1U || cfg->secret_len > KEYSTORE_SECRET_MAX_BYTES) {
         return false;
     }
+    if (cfg->secret_chars < KEYSTORE_SECRET_CHARS_MIN ||
+        cfg->secret_chars > KEYSTORE_SECRET_CHARS_MAX) {
+        return false;
+    }
+    /* 字符数与解码长度必须自洽（base32 解码长度 = 字符数 × 5 / 8） */
+    if (((size_t)cfg->secret_chars * 5U) / 8U != (size_t)cfg->secret_len) {
+        return false;
+    }
     return true;
 }
 
 static bool config_equal(const keystore_config_t *a, const keystore_config_t *b)
 {
     return a->algo == b->algo && a->digits == b->digits &&
-           a->period_s == b->period_s && a->secret_len == b->secret_len &&
-           a->config_crc16 == b->config_crc16 &&
+           a->period_s == b->period_s && a->secret_chars == b->secret_chars &&
+           a->secret_len == b->secret_len && a->config_crc16 == b->config_crc16 &&
            memcmp(a->secret, b->secret, a->secret_len) == 0;
 }
 
@@ -112,6 +124,7 @@ static void record_encode(const keystore_config_t *cfg, uint8_t *record)
     record[KS_OFF_DIGITS] = cfg->digits;
     put_u16(&record[KS_OFF_PERIOD], cfg->period_s);
     record[KS_OFF_SECRET_LEN] = cfg->secret_len;
+    record[KS_OFF_SECRET_CHARS] = cfg->secret_chars;
     put_u16(&record[KS_OFF_CONFIG_CRC], cfg->config_crc16);
     memcpy(&record[KS_OFF_SECRET], cfg->secret, cfg->secret_len);
     put_u16(&record[KS_OFF_RECORD_CRC], crc16_ccitt_false(record, KS_CRC_COVER_BYTES));
@@ -133,6 +146,7 @@ static bool record_parse(const uint8_t *record, keystore_config_t *cfg_out)
     cfg.digits = record[KS_OFF_DIGITS];
     cfg.period_s = get_u16(&record[KS_OFF_PERIOD]);
     cfg.secret_len = record[KS_OFF_SECRET_LEN];
+    cfg.secret_chars = record[KS_OFF_SECRET_CHARS];
     cfg.config_crc16 = get_u16(&record[KS_OFF_CONFIG_CRC]);
     memset(cfg.secret, 0, sizeof cfg.secret);
     memcpy(cfg.secret, &record[KS_OFF_SECRET], KEYSTORE_SECRET_MAX_BYTES);
