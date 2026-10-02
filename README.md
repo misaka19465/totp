@@ -83,6 +83,9 @@ ctest --test-dir firmware/tests/build --output-on-failure
 
 - 已完成项目骨架、构建系统（已验证可编译出可运行固件）与设计文档；
 - 已完成 App 层口令计算核心 `app/base32`、`app/hmac_sha1`、`app/totp`，
-  含主机侧 RFC 向量测试（92 项断言，全绿）；
-- 其余功能（渲染、RTC/电源/看门狗、keystore/proto、配置工具）尚未实现，
-  落地顺序见 `docs/architecture.md` §10。
+  含主机侧 RFC 向量测试；
+- 已完成驱动层 `drivers/ht1621`（三线串口）、`drivers/lcd_render`（字形表、
+  1..6 位右对齐、4 个状态点）与 `drivers/battery`（VREFINT 反推 VDD），
+  主机侧测试合计 252 项断言，全绿；
+- 其余功能（`uart_link`/`plug_detect`、RTC/电源/看门狗、keystore/proto、
+  配置工具）尚未实现，落地顺序见 `docs/architecture.md` §10。
