@@ -449,5 +449,8 @@ EEPROM 写周期在 STM32L0 上为毫秒级（字级擦/写各典型 3.3 ms）�
    **已实现**：§5 全部 8 条命令，响应按 §8 向量逐字节验证；`GET_STATUS`/
    `PING` 的状态位由调用方传入的状态快照（电量/复位原因/故障锁存/看门狗）
    与 `keystore`/`clock_rtc` 查询组装，电量与复位原因的采集属电源/看门狗层；
-3. 上位机 `tools/provision/provision.py`（本规范 §6 的 CLI：ping/set-time/
-   write-seed/read-meta/erase/status/verify），依赖 `pyserial`，参考编解码已就绪。
+3. 上位机 `tools/provision/provision.py`——**已实现**：本规范 §6 的 CLI
+   （ping/get-time/set-time/status/read-meta/write-seed/erase/set-calib/verify），
+   依赖 `pyserial`；编解码复用 `protocol.py`，会话层（前导码/重传/会话恢复）、
+   命令层（读回与 `config_crc16` 复算）与 TOTP 屏上比对分为独立模块，
+   主机侧测试含进程内设备仿真；已在 L031 实物上跑通全部命令。

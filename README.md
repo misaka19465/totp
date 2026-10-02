@@ -20,7 +20,7 @@ CR2032 纽扣电池供电，码在本地计算，无需联网。
 ```
 docs/            设计与需求文档（先读这里）
 firmware/        固件源码与构建系统
-tools/provision/ 上位机配置工具（待实现）
+tools/provision/ 上位机配置工具（命令行，python3 + pyserial）
 ```
 
 ## 文档
@@ -30,7 +30,7 @@ tools/provision/ 上位机配置工具（待实现）
 | `docs/requirements.md` | 需求规格（产品定位、功能/非功能需求、状态指示、对时方式） |
 | `docs/architecture.md` | 软件分层、低功耗策略、主控选型结论 |
 | `docs/hardware.md` | 硬件审定：引脚、段码映射、功耗分析、已发现的硬件问题 |
-| `docs/serial-protocol.md` | 耳机口串口协议 v1.1（帧格式、对时、写种子、插头检测） |
+| `docs/serial-protocol.md` | 耳机口串口协议 v1.2（帧格式、对时、写种子、插头检测） |
 
 > **注意**：`docs/requirements.md` §1–§3 记录了已确认的关键取舍（无按键、常亮、
 > 2–4 个月电池寿命、非安全设备），建议先读；全部设计决策已关闭，
@@ -67,6 +67,27 @@ cmake -S firmware/tests -B firmware/tests/build
 cmake --build firmware/tests/build
 ctest --test-dir firmware/tests/build --output-on-failure
 ```
+
+## 配置工具（活动前）
+
+`tools/provision/provision.py` 是组织者用的命令行配置工具，实现
+`docs/serial-protocol.md` §6 的完整流程，依赖 `pyserial`：
+
+```bash
+python3 -m pip install pyserial
+
+./tools/provision/provision.py -p /dev/ttyUSB0 ping          # 握手与版本检查
+./tools/provision/provision.py -p /dev/ttyUSB0 set-time      # 用主机 UTC 对时
+./tools/provision/provision.py -p /dev/ttyUSB0 write-seed JBSWY3DPEHPK3PXP
+./tools/provision/provision.py -p /dev/ttyUSB0 verify JBSWY3DPEHPK3PXP
+```
+
+- `verify` 执行 §6 全流程：对时 → 写种子 → READ_META 读回比对 → 显示当前
+  口令与剩余秒数供操作员与屏上数字比对 → GET_STATUS；`--yes` 跳过人工比对。
+- 其余子命令：`get-time`、`status`、`read-meta`、`erase`、`set-calib`。
+- `--port` 缺省时自动探测 USB 串口，也可用 `TOTP_PORT` 环境变量指定。
+- 主机侧测试：`python3 -m unittest discover -s tools/provision -v`
+  （§8 逐字节向量 + 会话重传/恢复 + TOTP RFC 向量 + 进程内设备仿真的 CLI 全流程）。
 
 ## 硬件注意事项
 
@@ -114,9 +135,17 @@ ctest --test-dir firmware/tests/build --output-on-failure
   对时/写种子成功后立即刷新显示并清除故障锁存；RTC 不可用时降级为
   仅 EXTI 唤醒并锁存故障（不进入 IWDG 复位循环）；
   主机侧测试合计 5981 项断言，全绿；
-- 剩余：配置工具 `tools/provision`（写种子、对时、读回比对）与实机标定，
-  落地顺序见 `docs/architecture.md` §10/§11。
+- 已完成上位机配置工具 `tools/provision`（`ping`/`get-time`/`set-time`/`status`/
+  `read-meta`/`write-seed`/`erase`/`set-calib`/`verify`）：会话层按 §7 实现
+  前导码、重传与会话恢复，命令层做写后读回与 `config_crc16` 复算，`verify`
+  按 §6 跑完整流程并显示口令供屏上比对；主机侧测试 69 项，全绿。
+- 剩余：实机标定（`docs/architecture.md` §11 清单）。
 - 实机调试（2026-10-02，首板）：修复两处"外设时钟未就绪即等待"的死锁
   （ADC 校准前未切 `CKMODE`；IWDG 先配置后使能导致 LSI 未开时卡在 SR 轮询）；
   LSE 驱动档按实测改为中高（低档冷启动 6 s 超时、中高档 ~300 ms）；
-  电池采样实读 3.35 V、RTC 走时与 IWDG 均正常；串口配置流程待接线验证。
+  修复 RTC 闹钟在 EXTI 线 17 上缺少上升沿使能（`RTSR`）导致空闲约 4 s 被
+  IWDG 反复复位的问题；电池采样实读 3.35 V、RTC 走时与 IWDG 均正常；
+  串口配置流程已接通实物验证
+  （ping/对时/读时间/状态/写种子/读回/擦除/校准/verify 全通过，写入
+  `JBSWY3DPEHPK3PXP` 后 `config_crc16=0xB638`，与规范 §8 向量一致；对时回读
+  偏差 +10~15 ms，上位机容差 ±100 ms，见 serial-protocol.md §5.4）。
