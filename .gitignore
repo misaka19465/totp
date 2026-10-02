@@ -1,0 +1,58 @@
+# --- 构建产物 ---
+build/
+out/
+*.o
+*.d
+*.a
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+*.su
+*.i
+
+# --- CMake ---
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+Testing/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# --- 编辑器 / IDE ---
+# NOTE: .vscode/ 亦被用户的全局 gitignore(~/.gitignore_global) 排除，
+#       若需纳入仓库的 .vscode/settings.json，须用 git add -f。
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# --- 本地临时/分析产物（原理图截图、反查结果等） ---
+.tmp*/
+tmp/
+tmp_*/
+
+# --- 设备本地状态：绝不该进仓库 ---
+# NOTE: 含 TOTP 种子/对时状态，泄露即等同泄露第二因子
+*.seed
+*.secret
+secrets/
+.keys/
+*.key
+*.pem
+!tools/**/testdata/**/*.pem.placeholder
+
+# --- 抓包 / 调试输出 ---
+*.pcap
+*.pcapng
+*.logicdata
+*.sr

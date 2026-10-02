@@ -1,0 +1,5 @@
+# 第三方依赖由 firmware/cmake/fetch_vendor.cmake 拉取，不入库。
+# 版本锁定见同目录 VERSIONS.md。
+*
+!.gitignore
+!VERSIONS.md
