@@ -540,6 +540,11 @@ bool clock_rtc_alarm_set(uint64_t unix_ms)
     rtc_lock();
 
     EXTI->PR = CLOCK_RTC_ALARM_EXTI_LINE;   /* 清残留挂起，避免假唤醒 */
+    /* NOTE: 实机教训（2026-10-02，首板）：RTC 闹钟在 EXTI 线 17 上按
+     *       上升沿触发（RM0367 §13.3.2/§13.4.2），只开 IMR 不配 RTSR 时
+     *       Stop 下闹钟永远不会把 MCU 唤醒，表现为空闲约 4 s 后被 IWDG
+     *       反复复位（FAULT_LATCHED + 复位原因 IWDG）。 */
+    EXTI->RTSR |= CLOCK_RTC_ALARM_EXTI_LINE;
     EXTI->IMR |= CLOCK_RTC_ALARM_EXTI_LINE;
     NVIC_EnableIRQ(RTC_IRQn);
     return true;
