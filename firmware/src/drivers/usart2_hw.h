@@ -33,9 +33,11 @@ bool usart2_hw_is_on(void);
 void usart2_hw_send_byte(uint8_t byte);
 
 /**
- * @brief  非阻塞读取一个字节。
+ * @brief  非阻塞读取一个字节（来自 RXNE 中断的环形缓冲）。
  * @param  byte 输出；仅当返回 true 时有效
  * @return 收到字节返回 true，无数据返回 false
+ * @note   字节在中断里入队，本函数只消费缓冲；调用间隙不再有 ORE 丢字节，
+ *         但缓冲仅 96 B（≈8 ms 线上时间），解析方仍需按主循环节奏及时抽取。
  */
 bool usart2_hw_try_receive(uint8_t *byte);
 

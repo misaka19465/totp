@@ -77,6 +77,12 @@ void ht1621_init(void);
  * @param  data 数据数组，每个元素仅低 4 位有效；bit0=COM0 … bit3=COM3。
  * @param  len  写入的地址个数，调用方保证 addr + len 不超过 32。
  * @note   地址在器件内部自动递增，跨 0x1F 不自动回绕，调用方需自行分段。
+ * @note   线序按数据手册 WRITE 时序 `101 A5..A0 D0..D3`：地址字段 MSB 先出、
+ *         数据半字节 LSB 先出（D0=COM0）；调用方只按上面的 bit0..bit3 语义传值。
+ * @note   2026-10-02 实机曾因数据半字节按 MSB 先出而整屏 COM 行镜像
+ *         （状态点显示成 C 段竖条）。改动本函数位序后必须重做 COM 行复验：
+ *         向 0x00..0x05、0x0D..0x12 各写 0x1 应点亮 6 条 A 段 + 4 个状态点，
+ *         且不出现任何 C 段；映射与实测记录见 docs/hardware.md「段码屏映射」。
  */
 void ht1621_write(uint8_t addr, const uint8_t *data, uint8_t len);
 

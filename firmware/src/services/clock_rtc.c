@@ -26,7 +26,13 @@
 /* 以下都是 RTC 时钟域内的几个周期，超时值只用于兜住硬件异常 */
 #define CLOCK_RTC_INITF_TIMEOUT_MS   10U
 #define CLOCK_RTC_RSF_TIMEOUT_MS     10U
-#define CLOCK_RTC_SHPF_TIMEOUT_MS    20U
+/* NOTE: 纯 SUBFS 回退下 SHPF（移位挂起）约 2 个亚秒 tick（~7.8 ms）后随
+ *       移位生效一起清除；超时按最长一个亚秒周期取 1100 ms，仅用于兜住
+ *       硬件异常 —— 若 SHPF 真停留到秒边界，SET_TIME 端到端会接近 1 s，
+ *       而实机 6 轮实测响应均为 40 ms，正常路径远快于此。 */
+#define CLOCK_RTC_SHPF_TIMEOUT_MS    1100U
+/* SHIFTR 写入到移位生效的挂起时长，单位 1/256 s（实机实测量：恒为 2） */
+#define CLOCK_RTC_SHIFT_PENDING_TICKS 2U
 #define CLOCK_RTC_RECALPF_TIMEOUT_MS 100U
 #define CLOCK_RTC_ALRAWF_TIMEOUT_MS  20U
 
@@ -152,8 +158,12 @@ static uint32_t encode_time_reg(const rtc_time_civil_t *civil)
 
 static uint32_t encode_date_reg(const rtc_time_civil_t *civil)
 {
+    /* NOTE: 十位字段（YT/MT/DT）在寄存器里正好位于个位字段上方 4 bit，
+     *       所以整个两位 BCD 应放到个位字段的位置：年份放 YU_Pos，
+     *       月放 MU_Pos，日放 DU_Pos。放到十位字段会整体左移 4 bit
+     *       （2026 写成 "60"，实机 2026-10-02 复现）。 */
     return ((uint32_t)rtc_time_bin_to_bcd((uint8_t)(civil->year - RTC_TIME_YEAR_MIN))
-            << RTC_DR_YT_Pos) |
+            << RTC_DR_YU_Pos) |
            ((uint32_t)rtc_time_bin_to_bcd(civil->month) << RTC_DR_MU_Pos) |
            ((uint32_t)rtc_time_bin_to_bcd(civil->day) << RTC_DR_DU_Pos) |
            ((uint32_t)civil->weekday << RTC_DR_WDU_Pos);
@@ -169,12 +179,16 @@ static bool decode_civil(uint32_t tr, uint32_t dr, rtc_time_civil_t *civil)
     uint8_t day = 0U;
     const uint8_t weekday = (uint8_t)((dr & RTC_DR_WDU_Msk) >> RTC_DR_WDU_Pos);
 
-    if (!rtc_time_bcd_to_bin((uint8_t)((tr & RTC_TR_HU_Msk) >> RTC_TR_HU_Pos), &hour) ||
-        !rtc_time_bcd_to_bin((uint8_t)((tr & RTC_TR_MNU_Msk) >> RTC_TR_MNU_Pos), &minute) ||
-        !rtc_time_bcd_to_bin((uint8_t)(tr & RTC_TR_SU_Msk), &second) ||
-        !rtc_time_bcd_to_bin((uint8_t)((dr & RTC_DR_YT_Msk) >> RTC_DR_YT_Pos), &year) ||
-        !rtc_time_bcd_to_bin((uint8_t)((dr & RTC_DR_MU_Msk) >> RTC_DR_MU_Pos), &month) ||
-        !rtc_time_bcd_to_bin((uint8_t)(dr & RTC_DR_DU_Msk), &day)) {
+    /* NOTE: 每个字段取"十位+个位"合成的整字节 BCD（十位就在个位上方 4 bit），
+     *       只取个位半字节会把 10 月/40 分这类两位值解成个位数字
+     *       （实机 2026-10-02 因此 set-time 回读恒失败）。掩码只覆盖
+     *       十位+个位，天然挡掉保留位。 */
+    if (!rtc_time_bcd_to_bin((uint8_t)((tr >> RTC_TR_HU_Pos) & 0x3FU), &hour) ||
+        !rtc_time_bcd_to_bin((uint8_t)((tr >> RTC_TR_MNU_Pos) & 0x7FU), &minute) ||
+        !rtc_time_bcd_to_bin((uint8_t)(tr & 0x7FU), &second) ||
+        !rtc_time_bcd_to_bin((uint8_t)((dr >> RTC_DR_YU_Pos) & 0xFFU), &year) ||
+        !rtc_time_bcd_to_bin((uint8_t)((dr >> RTC_DR_MU_Pos) & 0x1FU), &month) ||
+        !rtc_time_bcd_to_bin((uint8_t)(dr & 0x3FU), &day)) {
         return false;
     }
     if (hour > 23U || minute > 59U || second > 59U || weekday < 1U || weekday > 7U) {
@@ -191,6 +205,48 @@ static bool decode_civil(uint32_t tr, uint32_t dr, rtc_time_civil_t *civil)
 
     uint64_t unix_s = 0U;
     return rtc_time_to_unix(civil, &unix_s); /* 复用月份/闰年等范围校验 */
+}
+
+/* ---- 日历写入与亚秒移位 ---------------------------------------------- */
+
+/** init 模式下写入整份日历并等待影子寄存器同步（RSF）；RTC 异常返回 false。 */
+static bool rtc_write_civil(const rtc_time_civil_t *civil)
+{
+    if (!rtc_enter_init()) {
+        return false;
+    }
+    RTC->TR = encode_time_reg(civil);
+    RTC->DR = encode_date_reg(civil);
+    rtc_exit_init();
+    rtc_lock();
+    return wait_mask_set(&RTC->ISR, RTC_ISR_RSF, CLOCK_RTC_RSF_TIMEOUT_MS);
+}
+
+/** 读当前亚秒相位（已过 1/256 s 数，0..255）。SS 超过 PREDIV_S
+ *  （上次移位的余波，相位为负）返回 false，由上位机重试覆盖。 */
+static bool rtc_read_phase_ticks(uint32_t *ticks_out)
+{
+    const uint32_t ssr = RTC->SSR & RTC_SSR_SS;
+    /* NOTE: 读 SSR 会锁定日历影子寄存器直到读 DR（RM0367 §22.4.8），
+     *       这里只取相位，立即读 DR 解锁。 */
+    (void)RTC->DR;
+    if (ssr > RTC_TIME_TICKS_MAX) {
+        return false;
+    }
+    *ticks_out = RTC_TIME_TICKS_MAX - ssr;
+    return true;
+}
+
+/** 纯回退移位：亚秒相位回退 subfs/256 s（subfs 取 1..255）。 */
+static bool rtc_subfs_shift(uint32_t subfs)
+{
+    rtc_unlock();
+    RTC->SHIFTR = subfs & RTC_SHIFTR_SUBFS_Msk;
+    rtc_lock();
+    if (!wait_mask_clear(&RTC->ISR, RTC_ISR_SHPF, CLOCK_RTC_SHPF_TIMEOUT_MS)) {
+        return false;
+    }
+    return wait_mask_set(&RTC->ISR, RTC_ISR_RSF, CLOCK_RTC_RSF_TIMEOUT_MS);
 }
 
 /* ---- 时间读取 -------------------------------------------------------- */
@@ -252,9 +308,10 @@ bool clock_rtc_init(void)
         rcc_csr_update(0U, RCC_CSR_RTCRST);
     }
 
-    /* LSE 低驱动档（architecture.md §4.5；22 pF 负载的实机标定见 §11）；
-     * 清 LSEBYP：本板是 32.768 kHz 晶体，不走外部时钟输入 */
-    rcc_csr_update(RCC_CSR_LSEON, RCC_CSR_LSEDRV | RCC_CSR_LSEBYP);
+    /* LSE 驱动档取中高（LSEDRV=10）。实机标定（2026-10-02，常温冷启动）：
+     * 低档 LSEDRV=00 启振 6.0–6.3 s，超过 3 s 等待上限导致降级；中高档
+     * 3 次实测均 ~300 ms。清 LSEBYP：本板是 32.768 kHz 晶体，非外部时钟。 */
+    rcc_csr_update(RCC_CSR_LSEON | RCC_CSR_LSEDRV_1, RCC_CSR_LSEDRV | RCC_CSR_LSEBYP);
     if (!wait_mask_set(&RCC->CSR, RCC_CSR_LSERDY, CLOCK_RTC_LSE_TIMEOUT_MS)) {
         return false;
     }
@@ -356,51 +413,40 @@ bool clock_rtc_set_unix_ms(uint64_t unix_ms, uint64_t *readback_ms)
         return false;
     }
 
-    /* 1. 写入整秒（init 模式下日历计数器停止，TR/DR 生效后重新起走） */
-    if (!rtc_enter_init()) {
-        return false;
-    }
-    RTC->TR = encode_time_reg(&civil);
-    RTC->DR = encode_date_reg(&civil);
-    rtc_exit_init();
-    rtc_lock();
-    if (!wait_mask_set(&RTC->ISR, RTC_ISR_RSF, CLOCK_RTC_RSF_TIMEOUT_MS)) {
+    /* 1. 写入目标整秒（init 模式下日历计数器停止，TR/DR 生效后重新起走） */
+    if (!rtc_write_civil(&civil)) {
         return false;
     }
 
-    /* 2. 亚秒对齐：写 TR/DR 不改变同步预分频计数器的相位，用 SHIFTR 把
-     *    当前相位修正到目标相位 ticks。RTC_SSR 只读，这是唯一定位亚秒的
-     *    手段（RM0367 §22.4.10）。 */
-    const uint32_t ssr = RTC->SSR & RTC_SSR_SS;
-    /* NOTE: 读 SSR/TR 会锁定日历影子寄存器直到读 DR（RM0367 §22.4.8）；
-     *       这里只取相位，读到 SSR 后立即读 DR 解锁，否则后续 RSF 永远
-     *       不会重新置位（SHIFTR 会清 RSF）。 */
-    (void)RTC->DR;
-    if ((ssr & 0x8000U) != 0U) {
-        return false; /* RM 要求 SS[15] 置位时禁止移位 */
+    /* 2. 亚秒对齐：init 写入会把亚秒计数器一并复位（实机验证：写入后
+     *    SSR 恒为 PREDIV_S，即相位 0），因此只需把相位挪到目标值 X/256 s。
+     *    NOTE: 实机实测（2026-10-02，L031 实物）：
+     *     - SHIFTR 写入后要 2 个 1/256 s 周期（~7.8 ms）才生效，且生效时
+     *       以当时的相位为基准（8 次探针一致）—— 所以计算回退量时必须把
+     *       这段挂起时间补进去，否则回读恒超差；
+     *     - ADD1S 位不产生 +1 s 效果，只做回退移位（SUBFS），需要"提前"
+     *       时先把日历写为目标秒 + 1，再用 (1 s − 提前量) 抵消。 */
+    uint32_t phase = 0U;
+    if (!rtc_read_phase_ticks(&phase)) {
+        phase = 0U;
     }
-    int32_t delta = (int32_t)ticks - ((int32_t)RTC_TIME_TICKS_MAX - (int32_t)ssr);
-    if (delta > 255 || delta < -255) {
-        /* 上一次对时走了"提前"移位时，SS 会暂时大于 PREDIV_S（约 1 s 内
-         * 自然消解），此时紧接的第二次对时可能超出单次移位范围：
-         * 不写备份、报失败，由上位机的超时重传覆盖（serial-protocol.md §7），
-         * 几百毫秒后的重试必然落在范围内。 */
-        return false;
-    }
-    if (delta != 0) {
-        rtc_unlock();
-        if (delta > 0) {
-            /* 提前 delta/256 s：ADD1S 加 1 s 再减去 (256-delta)/256 s */
-            RTC->SHIFTR = RTC_SHIFTR_ADD1S | (uint32_t)(256 - delta);
-        } else {
-            /* 滞后 |delta|/256 s */
-            RTC->SHIFTR = (uint32_t)(-delta);
-        }
-        rtc_lock();
-        if (!wait_mask_clear(&RTC->ISR, RTC_ISR_SHPF, CLOCK_RTC_SHPF_TIMEOUT_MS)) {
+    uint32_t at_shift = phase + CLOCK_RTC_SHIFT_PENDING_TICKS;
+    if (at_shift > (uint32_t)ticks) {
+        if (!rtc_subfs_shift(at_shift - (uint32_t)ticks)) {
             return false;
         }
-        if (!wait_mask_set(&RTC->ISR, RTC_ISR_RSF, CLOCK_RTC_RSF_TIMEOUT_MS)) {
+    } else if (at_shift < (uint32_t)ticks) {
+        rtc_time_civil_t next;
+        /* unix_s + 1 越界（2099-12-31T23:59:59Z 对时）时无法补偿：报失败 */
+        if (!rtc_time_from_unix(unix_s + 1U, &next) || !rtc_write_civil(&next)) {
+            return false;
+        }
+        phase = 0U;
+        if (!rtc_read_phase_ticks(&phase)) {
+            phase = 0U;
+        }
+        at_shift = phase + CLOCK_RTC_SHIFT_PENDING_TICKS;
+        if (!rtc_subfs_shift(256U + at_shift - (uint32_t)ticks)) {
             return false;
         }
     }

@@ -48,14 +48,18 @@ void watchdog_start(void)
     if (s_started) {
         return;
     }
+    /* NOTE: 必须先写 0xCCCC 使能：只有使能时 IWDG 才强制打开 LSI，而 PR/RLR
+     *       的写同步（SR.PVU/RVU 清零）发生在 LSI 时钟域。先配置再使能会永久
+     *       卡在 SR 轮询（实机复现：PC 停在 SR 等待、RCC_CSR.LSION=0）。
+     *       顺序与 ST HAL_IWDG_Init 一致。 */
+    IWDG->KR = WATCHDOG_KEY_ENABLE;
     IWDG->KR = WATCHDOG_KEY_ACCESS;
     IWDG->PR = WATCHDOG_PRESCALER;
     IWDG->RLR = WATCHDOG_RELOAD;
     while ((IWDG->SR & (IWDG_SR_PVU | IWDG_SR_RVU)) != 0U) {
-        /* 等待分频/重装值同步到 LSI 时钟域（数据手册典型 5 个 LSI 周期） */
+        /* LSI 已在跑：同步只需几个 LSI 周期（~100 µs） */
     }
     IWDG->KR = WATCHDOG_KEY_RELOAD;
-    IWDG->KR = WATCHDOG_KEY_ENABLE;
     s_started = true;
 }
 

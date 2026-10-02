@@ -23,6 +23,11 @@ set(CMAKE_ASM_FLAGS "-mcpu=cortex-m0plus -mthumb -mfloat-abi=soft -x assembler-w
 option(TOTP_WERROR     "把本工程代码的编译器告警视为错误" ON)
 option(TOTP_ENABLE_LTO "启用链接时优化以压缩体积"          OFF)
 
+# NOTE: 烧录用 OpenOCD 的接口配置随调试探针而异：ST-Link（Nucleo/独立狗）用
+#       interface/stlink.cfg，CMSIS-DAP 用 interface/cmsis-dap.cfg。
+set(TOTP_OPENOCD_INTERFACE "interface/stlink.cfg" CACHE STRING
+    "OpenOCD 接口配置（-f 的第一个参数）")
+
 set(CMAKE_C_FLAGS_DEBUG   "-Og -g3 -gdwarf-4")
 set(CMAKE_C_FLAGS_RELEASE "-Os -g0 -ffunction-sections -fdata-sections")
 set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-Wl,--gc-sections")
@@ -117,7 +122,7 @@ add_custom_command(TARGET totp_token.elf POST_BUILD
 )
 
 add_custom_target(flash
-  COMMAND openocd -f interface/cmsis-dap.cfg -f target/stm32l0.cfg
+  COMMAND openocd -f ${TOTP_OPENOCD_INTERFACE} -f target/stm32l0.cfg
           -c "program ${CMAKE_BINARY_DIR}/totp_token.elf verify reset exit"
   DEPENDS totp_token.elf
   COMMENT "通过 SWD (J2) 烧录并校验"

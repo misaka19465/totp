@@ -50,7 +50,8 @@ cmake --build build
 
 产物：`firmware/build/totp_token.{elf,bin,hex}`。
 
-烧录（需 OpenOCD 与 CMSIS-DAP 调试器）：
+烧录（需 OpenOCD 与调试器；默认按 ST-Link 配置，用 CMSIS-DAP 时以
+`-DTOTP_OPENOCD_INTERFACE=interface/cmsis-dap.cfg` 重新配置）：
 
 ```bash
 cmake --build build --target flash
@@ -115,3 +116,7 @@ ctest --test-dir firmware/tests/build --output-on-failure
   主机侧测试合计 5981 项断言，全绿；
 - 剩余：配置工具 `tools/provision`（写种子、对时、读回比对）与实机标定，
   落地顺序见 `docs/architecture.md` §10/§11。
+- 实机调试（2026-10-02，首板）：修复两处"外设时钟未就绪即等待"的死锁
+  （ADC 校准前未切 `CKMODE`；IWDG 先配置后使能导致 LSI 未开时卡在 SR 轮询）；
+  LSE 驱动档按实测改为中高（低档冷启动 6 s 超时、中高档 ~300 ms）；
+  电池采样实读 3.35 V、RTC 走时与 IWDG 均正常；串口配置流程待接线验证。

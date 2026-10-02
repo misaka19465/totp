@@ -2,10 +2,15 @@
  * @file    ht1621.c
  * @brief   HT1621B 三线串行驱动实现。
  *
- * 线格式（MSB 先出，CS# 上升沿锁存）：
+ * 线格式（CS# 上升沿锁存）：
  *   命令  : 100（模式 ID）+ 9 bit 命令码；最低位数据手册标 don't-care，
  *           本驱动恒发 0，故 12 bit 帧可写成 0x800 | 8 bit 码值
  *   写数据: 3 bit 标志 101 + 6 bit 起始地址 + N × 4 bit 数据（地址自动递增）
+ *
+ * NOTE: 字段位序按数据手册 WRITE 模式时序 `101 A5..A0 D0..D3`：
+ *       地址字段 **MSB 先出**，数据半字节 **LSB 先出**（D0 = COM0）。
+ *       两者顺序不同，改动本文件的输出顺序前必须实机复验：
+ *       数据位序写反会让整屏 COM 行镜像（DOT 变成 C 段、A 段与 D 段互换等）。
  *
  * NOTE: 命令码见下方 CMD_*，与数据手册命令表一一对应。
  *
@@ -64,16 +69,19 @@ static void data_out(unsigned bit)
 }
 
 /**
- * @brief  MSB 先出地输出 value 的低 bits 位。
+ * @brief  按位输出 value 的低 bits 位。
+ * @param  lsb_first true = 先出最低位（数据半字节 D0..D3），
+ *                   false = 先出最高位（命令码与地址字段 A5..A0）。
  * @note   HT1621 在 WR 上升沿采样 DATA。WR 低/高电平都必须满足 tCLK(min)，
  *         数据在上升沿前建立（tsu）、上升沿后保持（th），故每个边沿间都忙等。
  */
-static void write_bits(uint32_t value, uint8_t bits)
+static void write_bits(uint32_t value, uint8_t bits, bool lsb_first)
 {
     for (uint8_t i = 0; i < bits; i++) {
+        const uint8_t shift = lsb_first ? i : (uint8_t)(bits - 1U - i);
         wr_low();
         ht_delay_loops(HT_WR_DELAY_LOOPS);   /* WR 低电平宽度 */
-        data_out((value >> (bits - 1U - i)) & 1U);
+        data_out((value >> shift) & 1U);
         ht_delay_loops(HT_WR_DELAY_LOOPS);   /* tsu：上升沿前数据已稳定 */
         wr_high();
         ht_delay_loops(HT_WR_DELAY_LOOPS);   /* WR 高电平宽度，兼作 th 数据保持 */
@@ -84,7 +92,7 @@ static void send_command(uint8_t cmd_code)
 {
     cs_low();
     ht_delay_loops(HT_WR_DELAY_LOOPS);       /* tsu1：CS 先于首个 WR 下降沿 */
-    write_bits(CMD_MODE_CMD | cmd_code, 12U);
+    write_bits(CMD_MODE_CMD | cmd_code, 12U, false);
     /* 最后一次 wr_high 后 write_bits 内已等待，满足 th1：CS 抬起前的保持 */
     cs_high();
 }
@@ -115,10 +123,10 @@ void ht1621_write(uint8_t addr, const uint8_t *data, uint8_t len)
 {
     cs_low();
     ht_delay_loops(HT_WR_DELAY_LOOPS);         /* tsu1：CS 建立 */
-    write_bits(0x05U, 3U);                     /* 写数据标志 101 */
-    write_bits((uint32_t)(addr & 0x3FU), 6U);  /* 起始地址 A5..A0 */
+    write_bits(0x05U, 3U, false);                     /* 写数据标志 101 */
+    write_bits((uint32_t)(addr & 0x3FU), 6U, false);  /* 起始地址 A5..A0，MSB 先出 */
     for (uint8_t i = 0; i < len; i++) {
-        write_bits((uint32_t)(data[i] & 0x0FU), 4U);
+        write_bits((uint32_t)(data[i] & 0x0FU), 4U, true);  /* 数据 D0..D3，LSB 先出 */
     }
     cs_high();
 }

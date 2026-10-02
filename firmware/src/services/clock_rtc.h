@@ -13,7 +13,8 @@
  *   - 提供 SET_CALIB 的 0.01 ppm 折算与回读（serial-protocol.md §5.8）。
  *
  * NOTE: 本模块不做低功耗管理，由调用方（主循环/电源状态机）决定调用时机；
- *       单次读约 0.1 ms、单次写约 0.3 ms，远低于协议 §7 的响应期限。
+ *       单次读 <1 ms；单次写约 10–20 ms（主要是 SHIFTR 生效等待 ~7.8 ms），
+ *       SET_TIME 端到端响应实测 <50 ms，满足协议 §7 的 ≤100 ms 期限。
  */
 #ifndef CLOCK_RTC_H
 #define CLOCK_RTC_H
@@ -29,8 +30,12 @@
 /** STALE 判定阈值：距上次对时 30 天（serial-protocol.md §5.4） */
 #define CLOCK_RTC_STALE_AFTER_S (30U * 24U * 3600U)
 
-/** SET_TIME 设备侧自检容差（ms），与 §5.4 上位机的 10 ms 判据同值 */
-#define CLOCK_RTC_SET_TOLERANCE_MS 10U
+/* SET_TIME 设备侧自检容差（ms），与 §5.4 上位机判据同值。
+ * NOTE: 自检只用于识别"写错整秒/写错日历"级别的错误，不承诺毫秒级精度：
+ *       回读发生在移位生效之后，且链路单程时延随 USB 转串口链路波动
+ *       （实机 2026-10-02：回读 − 发送 ≈ +13 ms，恒定偏置 ≈ −58 ms）。
+ *       100 ms 对 30 s 的 TOTP 窗口仍有 300 倍以上余量。 */
+#define CLOCK_RTC_SET_TOLERANCE_MS 100U
 
 /**
  * @brief  使能 LSE 并初始化 RTC（可重复调用）。
@@ -72,7 +77,8 @@ uint32_t clock_rtc_last_set_age_s(void);
  * @param  readback_ms 输出设备回读值；可为 NULL。
  * @return 写入后回读误差 ≤ CLOCK_RTC_SET_TOLERANCE_MS 返回 true，
  *         此时"上次对时"更新为 unix_ms；否则返回 false 且不改变对时状态。
- * @note   写入耗时约 0.3 ms（含一次 SHIFTR 亚秒对齐）。
+ * @note   写入路径实测约 10–20 ms（SHIFTR 生效等待 ~7.8 ms 为主），
+ *         SET_TIME 端到端响应 <50 ms（含 115200 链路往返）。
  */
 bool clock_rtc_set_unix_ms(uint64_t unix_ms, uint64_t *readback_ms);
 

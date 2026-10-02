@@ -58,22 +58,28 @@ static void adc_power_down(void)
 /** 触发一次通道 17（VREFINT）转换并返回原始码值 */
 static uint16_t adc_convert_vrefint(void)
 {
-    /* 校准必须在 ADEN = 0 时进行，且需 ADC 稳压器已上电 */
-    ADC1->CR |= ADC_CR_ADCAL;
-    while ((ADC1->CR & ADC_CR_ADCAL) != 0U) {
-        /* 等待校准完成（约 5 µs） */
-    }
+    /* NOTE: 校准需要 ADC 时钟在跑，而 CFGR2 复位值 CKMODE=00 选择 ADCCLK
+     *       （片内 HSI16）。本工程常驻 MSI、HSI16 只在串口会话期间开启，
+     *       因此必须先把时钟切到 PCLK/2 再启动校准，否则 ADCAL 永不归零
+     *       （实机表现为 CM0+ 卡死在等待循环、被 IWDG 反复复位）。
+     *       CKMODE 只能在 ADEN = 0 时修改，故整段配置放在使能 ADC 之前。 */
+    ADC1->CFGR2 &= ~ADC_CFGR2_CKMODE;
+    ADC1->CFGR2 |= ADC_CFGR2_CKMODE_0;      /* 同步时钟 PCLK/2 */
+    /* 低频率模式：PCLK/2 ≈ 1.05 MHz < 2.8 MHz，见文件头 NOTE */
+    ADC->CCR |= ADC_CCR_LFMEN | ADC_CCR_VREFEN;
 
     /* 12 bit（RES = 00）、右对齐、单次转换、软件触发 */
     ADC1->CFGR1 &= ~(ADC_CFGR1_CONT | ADC_CFGR1_RES | ADC_CFGR1_ALIGN);
-    /* 同步时钟 PCLK/2；低频率模式见文件头 NOTE */
-    ADC1->CFGR2 &= ~ADC_CFGR2_CKMODE;
-    ADC1->CFGR2 |= ADC_CFGR2_CKMODE_0;
-    ADC->CCR |= ADC_CCR_LFMEN | ADC_CCR_VREFEN;
 
     /* 最长采样时间（160.5 周期）：VREFINT 源阻抗高，需足够采样窗口 */
     ADC1->SMPR = ADC_SMPR_SMP;
     ADC1->CHSELR = ADC_CHSELR_CHSEL17;
+
+    /* 校准必须在 ADEN = 0 时进行，且需 ADC 稳压器已上电（adc_power_up） */
+    ADC1->CR |= ADC_CR_ADCAL;
+    while ((ADC1->CR & ADC_CR_ADCAL) != 0U) {
+        /* 等待校准完成（约 5 µs） */
+    }
 
     ADC1->CR |= ADC_CR_ADEN;
     while ((ADC1->ISR & ADC_ISR_ADRDY) == 0U) {

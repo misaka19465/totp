@@ -230,6 +230,9 @@ static void serial_handle(uint64_t now_ms)
     }
     if (frame.cmd == PROTO_CMD_SET_TIME) {
         s_code_valid = false;   /* 时间可能大幅跳变，强制重算 */
+        /* NOTE: 对时把时钟整体平移，沿用旧的上电基准会让 uptime 变天文数字；
+         *       以对时时刻为新基准，uptime 语义变为"上次对时以来运行时长"。 */
+        s_boot_ms = app_now_ms();
     }
     if (frame.cmd == PROTO_CMD_SET_TIME || frame.cmd == PROTO_CMD_WRITE_SLOT) {
         watchdog_clear_fault();
@@ -281,10 +284,10 @@ int main(void)
         if (code_update(now_ms)) {
             s_display_dirty = true;
         }
-        /* NOTE: 会话期间跳过周期性重写：位翻转落屏要 1–3 ms，可能吞掉
-         *       正在收的帧（USART 无 DMA/中断接收）。命令触发的刷新与
-         *       窗口边界换码仍会立即落屏（NFR-3），配置期间最多 10 s
-         *       不做直流偏置缓解，对月尺度的老化无影响。 */
+        /* NOTE: 会话期间跳过周期性重写：位翻转落屏要 1–3 ms，期间解析器
+         *       停摆（RX 环形缓冲仅 96 B ≈ 8 ms 线上余量，且帧内超时判定
+         *       被推迟）。命令触发的刷新与窗口边界换码仍会立即落屏（NFR-3），
+         *       配置期间最多 10 s 不做直流偏置缓解，对月尺度的老化无影响。 */
         const bool link_idle = (uart_link_state() == UART_LINK_SLEEP);
         if (s_display_dirty || (link_idle && now_ms >= s_flush_due_ms)) {
             display_refresh(now_ms);
