@@ -1,4 +1,4 @@
-# 主机侧单元测试：只编译 app/ 下的纯计算模块，不依赖 CMSIS/寄存器。
+# 主机侧单元测试：只编译 app/ 与 services/ 下的纯计算模块，不依赖 CMSIS/寄存器。
 # 用法：cmake -S firmware/tests -B firmware/tests/build && cmake --build firmware/tests/build && ctest --test-dir firmware/tests/build
 cmake_minimum_required(VERSION 3.20)
 
@@ -20,6 +20,7 @@ add_executable(test_app
   test_hmac_sha1.c
   test_keystore.c
   test_lcd_render.c
+  test_rtc_time.c
   test_totp.c
   test_uart_link.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/app/base32.c
@@ -29,6 +30,7 @@ add_executable(test_app
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/common/crc16.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/drivers/lcd_render.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/drivers/uart_link.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../src/services/rtc_time.c
 )
 
 target_include_directories(test_app PRIVATE
@@ -36,6 +38,7 @@ target_include_directories(test_app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/app
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/common
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/drivers
+  ${CMAKE_CURRENT_SOURCE_DIR}/../src/services
 )
 
 # 与固件同一套告警契约，保证测试代码也按交叉编译的口径干净通过

@@ -74,6 +74,8 @@ add_executable(totp_token.elf
   src/drivers/plug_detect.c
   src/drivers/uart_link.c
   src/drivers/usart2_hw.c
+  src/services/clock_rtc.c
+  src/services/rtc_time.c
 )
 
 target_compile_options(totp_token.elf PRIVATE
@@ -90,6 +92,7 @@ target_include_directories(totp_token.elf PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/common
   ${CMAKE_CURRENT_SOURCE_DIR}/src/drivers
   ${CMAKE_CURRENT_SOURCE_DIR}/src/hal
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/services
 )
 
 target_link_libraries(totp_token.elf PRIVATE vendor_cmsis)

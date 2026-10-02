@@ -56,11 +56,12 @@ firmware/src/
 │   ├── base32.{h,c}       种子解码
 │   ├── keystore.{h,c}     EEPROM 中的单点位配置存储（已实现）
 │   └── proto.{h,c}        串口协议状态机（待实现）
-└── services/              （待实现）横切关注点
-    ├── clock_rtc.{h,c}    RTC 读写、校准、对时
-    ├── power.{h,c}        Stop 模式进出、唤醒源配置
-    ├── watchdog.{h,c}     IWDG 喂狗与超时策略
-    └── state_indicator.{h,c}  小数点状态指示
+└── services/              横切关注点
+    ├── clock_rtc.{h,c}    RTC 读写、校准、对时（已实现）
+    ├── rtc_time.{h,c}     日历/亚秒/校准纯换算（已实现，主机侧测试）
+    ├── power.{h,c}        Stop 模式进出、唤醒源配置（待实现）
+    ├── watchdog.{h,c}     IWDG 喂狗与超时策略（待实现）
+    └── state_indicator.{h,c}  小数点状态指示（待实现）
 ```
 
 **依赖方向单向向下**：`main → app → services/drivers → board → CMSIS`。
@@ -304,6 +305,9 @@ CN1 没有检测触点。可选方案：
   打卡场景通常可放宽比对窗口，活动前对时一次即可。
 - 片内 RTC 有 1 ppm 分辨率的数字校准，可补偿单一温度点的固定偏差；
   温度变化引起的漂移无法用固定校准值消除。
+- 对时（SET_TIME）把毫秒时间戳量化到 1/256 s，再用 RTC_SHIFTR 对齐亚秒相位；
+  RTC_SSR 只读，不能直接写亚秒计数器。量化误差 ≤ 3.9 ms，回读自检判据 10 ms
+  （serial-protocol.md §5.4）。
 
 换电池必然丢失时间（无 VBAT、无备份电容），需要重新对时 —— 这是已接受的限制。
 
@@ -341,7 +345,10 @@ CN1 没有检测触点。可选方案：
 > 其中 USART2 硬件层独立为 `usart2_hw`），主机侧测试覆盖帧编解码、CRC、重同步、
 > 唤醒窗口与 10 s 会话超时；第 4 步已完成 HMAC-SHA1/TOTP 与 `keystore`
 > （含 `drivers/nvm` 字级擦写、独立记录 CRC、幂等写入与失败回滚，主机侧测试
-> 覆盖损坏/掉电场景），`proto` 待实现；与主循环/电源状态机的接线留待第 3 步。
+> 覆盖损坏/掉电场景）；第 3 步已完成 `clock_rtc`（LSE 启振、UTC 毫秒读写、
+> 用 `RTC_SHIFTR` 对齐亚秒（`RTC_SSR` 只读）、备份寄存器记录对时状态、
+> CALR 校准折算，纯换算拆入 `services/rtc_time` 并做主机侧测试），
+> `power`/`watchdog` 与 `proto` 待实现；主循环/电源状态机的完整接线留待其后。
 
 ## 11. 待实测与标定项
 
@@ -354,3 +361,5 @@ CN1 没有检测触点。可选方案：
 | 电量阈值 | 2.4 V / 2.2 V 为建议值（§5.4） | 测出"对比度开始不可读"的实际电压并更新阈值 |
 | 显示重写 | 每 1–2 s 重写显示 RAM（hardware.md H8） | 连续点亮 1–2 个月，与不刷新对照组比对灰阶 |
 | X1 负载电容 | 需按供货规格核实（hardware.md H3） | 确认 `Q13FC13500004` 规格并核对 C4/C5 |
+| LSE 启振 | 低驱动档（`LSEDRV=00`）实测启振时间与低温余量；代码等待上限 3 s（clock_rtc.c） | 常温冷启动 < 3 s，低温下不超时；否则调整驱动档或上限 |
+| 对时亚秒对齐 | SET_TIME 后回读应比发送值小 0–4 ms；核实 `RTC_SHIFTR` 在实机上的行为与越界重试（serial-protocol.md §5.4） | 多次对时回读恒落在 0–4 ms，无 SHIFTR 越界失败 |

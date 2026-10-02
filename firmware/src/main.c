@@ -8,6 +8,7 @@
  */
 #include "battery.h"
 #include "board_pins.h"
+#include "clock_rtc.h"
 #include "ht1621.h"
 #include "keystore.h"
 #include "lcd_render.h"
@@ -40,11 +41,25 @@ int main(void)
 
     ht1621_init();
 
-    /* NOTE: clock_rtc/proto 尚未实现，设备只有两种可表达的状态：
-     *       无有效种子（DOT1）或已有种子但从未对时（DOT2，RTC 尚不存在）。
-     *       两种情况都没有可信口令，数字位留空（空屏比错误码稳妥）。
+    /* 时间服务：换电池后经历一次 LSE 冷启动（典型 <1 s），
+     * 系统复位（含 IWDG）时保留走时，直接返回。 */
+    const bool rtc_ok = clock_rtc_init();
+    const uint8_t time_flags = clock_rtc_time_flags();
+
+    /* NOTE: 设备当前的可表达状态：无有效种子（DOT1）、时间不可信
+     *       （DOT2：从未对时/超过 30 天）、RTC 起振失败（DOT5）。
+     *       口令显示尚未接入主循环，数字位一律留空（空屏比错误码稳妥）。
      *       状态语义与并发规则见 docs/requirements.md §4.0。 */
-    const uint8_t dots = keystore_present() ? LCD_DOT_NEED_SYNC : LCD_DOT_NO_SEED;
+    uint8_t dots = 0U;
+    if (!keystore_present()) {
+        dots |= LCD_DOT_NO_SEED;
+    }
+    if ((time_flags & (CLOCK_RTC_TIME_NEVER_SET | CLOCK_RTC_TIME_STALE)) != 0U) {
+        dots |= LCD_DOT_NEED_SYNC;
+    }
+    if (!rtc_ok) {
+        dots |= LCD_DOT_FAULT;
+    }
     (void)lcd_render_show(0U, 0U, dots);
 
     /* TODO: 电量阈值上报 DOT4（FR-7 / §4.1）在状态机落地后接入 */

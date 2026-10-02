@@ -93,5 +93,11 @@ ctest --test-dir firmware/tests/build --output-on-failure
   记录 CRC、参数校验、幂等写入、写后读回比对与失败回滚），配套
   `drivers/nvm`（EEPROM 字级擦写）与公共 `common/crc16`；
   主机侧测试合计 412 项断言，全绿；
-- 其余功能（RTC/电源/看门狗、proto、配置工具）尚未实现，
+- 已完成服务层 `services/clock_rtc`（LSE 启振、RTC 1 Hz + 1/256 s 亚秒、
+  UTC 毫秒读写、`RTC_SHIFTR` 亚秒对齐、备份寄存器记录对时状态与
+  TRUSTED/NEVER_SET/STALE 标志、CALR 数字校准折算），纯换算部分
+  `services/rtc_time` 配有主机侧测试（含 2000..2099 全时段逐日往返）；
+  主机侧测试合计 5829 项断言，全绿；`main.c` 开机接入 RTC 初始化与
+  DOT5 故障告警；
+- 其余功能（电源/看门狗、proto、配置工具）尚未实现，
   落地顺序见 `docs/architecture.md` §10。
