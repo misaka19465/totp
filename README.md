@@ -112,18 +112,22 @@ python3 -m pip install pyserial
 活动前运行一条命令即可完成配置与验收：
 
 ```bash
-./tools/provision/provision.py verify JBSWY3DPEHPK3PXP   # JBSWY3DPEHPK3PXP 为示例种子
+./tools/provision/provision.py setup                    # 生成随机种子并打印
+./tools/provision/provision.py setup JBSWY3DPEHPK3PXP   # 也可指定固定种子（示例）
 ```
 
-`verify` 执行完整流程：对时 → 写种子 → 读回比对 → 人工比对屏上码 → 读取状态。
+`setup` 执行完整流程：对时 → 写种子 → 读回比对 → 人工比对屏上码 → 读取状态。
 工具会打印当前口令，操作员与屏上数字核对；`--yes` 跳过人工比对，适合脚本调用。
+省略种子时工具用系统安全随机源生成 20 字节（160 bit）种子，写入前打印一次，
+需立即登记到服务器；写入后工具不再回显。
 
 需要单独操作时，也可以分步执行：
 
 ```bash
 ./tools/provision/provision.py ping
 ./tools/provision/provision.py set-time
-./tools/provision/provision.py write-seed JBSWY3DPEHPK3PXP --digits 6 --period 30
+./tools/provision/provision.py write-seed --digits 6 --period 30   # 随机种子
+./tools/provision/provision.py write-seed JBSWY3DPEHPK3PXP         # 指定种子
 ```
 
 子命令一览：
@@ -135,12 +139,12 @@ python3 -m pip install pyserial
 | `set-time` | 用电脑时间对时，回读误差 ≤100 ms |
 | `status` | 读取电量、对时、复位原因与故障 |
 | `read-meta` | 读取配置元信息，不回显种子 |
-| `write-seed` | 写入种子并读回比对 |
+| `write-seed` | 写入种子并读回比对（不给种子则随机生成） |
 | `erase` | 删除种子 |
 | `set-calib` | 写入 RTC 校准值（0.01 ppm，0 表示关闭） |
-| `verify` | 完整配置流程 |
+| `setup` | 完整配置与验收流程（不给种子则随机生成） |
 
-- `--digits` 取 1–6，`--period` 取 15–300 秒。
+- `--digits` 取 1–6，`--period` 取 15–300 秒，`--random-bytes` 取 1–35（默认 20）。
 - `--port` 缺省时自动探测 USB 串口，也可以用环境变量 `TOTP_PORT` 指定。
 
 ### 接线

@@ -1,4 +1,4 @@
-"""主机侧 TOTP 计算与 Base32 种子处理，供 verify 的屏上码比对使用。
+"""主机侧 TOTP 计算与 Base32 种子处理，供 setup 的屏上码比对使用。
 
 NOTE: 与固件 app/totp.c、app/base32.c 保持同一算法与约束：
       HMAC-SHA1 + RFC 4226 动态截断；位数 1..6；Base32 无填充、
@@ -7,13 +7,28 @@ NOTE: 与固件 app/totp.c、app/base32.c 保持同一算法与约束：
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
+import secrets
 import struct
 
 import protocol
 
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+
+# NOTE: 设备允许的种子为 1..35 字节（56 个 Base32 字符）；RFC 6238 的
+#       HMAC-SHA1 参考密钥为 20 字节，这里作为随机种子缺省长度。
+MIN_SECRET_BYTES = 1
+MAX_SECRET_BYTES = protocol.MAX_SECRET_CHARS * 5 // 8
+DEFAULT_SECRET_BYTES = 20
+
+
+def generate_secret(num_bytes: int = DEFAULT_SECRET_BYTES) -> str:
+    """生成指定字节数的随机种子，返回大写、无填充的规范 Base32。"""
+    if not MIN_SECRET_BYTES <= num_bytes <= MAX_SECRET_BYTES:
+        raise ValueError(f"随机种子字节数必须在 {MIN_SECRET_BYTES}..{MAX_SECRET_BYTES}")
+    return base64.b32encode(secrets.token_bytes(num_bytes)).decode("ascii").rstrip("=")
 
 
 def normalize_secret(raw: str) -> str:

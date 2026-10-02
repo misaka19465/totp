@@ -5,7 +5,9 @@
   provision.py -p /dev/ttyUSB0 ping
   provision.py -p /dev/ttyUSB0 set-time
   provision.py -p /dev/ttyUSB0 write-seed JBSWY3DPEHPK3PXP --digits 6 --period 30
-  provision.py -p /dev/ttyUSB0 verify JBSWY3DPEHPK3PXP --yes
+  provision.py -p /dev/ttyUSB0 write-seed          # 生成随机种子并打印
+  provision.py -p /dev/ttyUSB0 setup JBSWY3DPEHPK3PXP --yes
+  provision.py -p /dev/ttyUSB0 setup --yes         # 生成随机种子并打印
 
 NOTE: 依赖 pyserial（`python3 -m pip install pyserial`）；缺省 --port 时
       自动探测 USB 串口，也可用 TOTP_PORT 环境变量指定。
@@ -144,6 +146,12 @@ def _ask_screen_match(*, assume_yes: bool) -> bool | None:
     return answer in ("y", "yes")
 
 
+def _print_generated_seed(secret: str) -> None:
+    """随机种子只在写入前打印一次，供操作员登记到服务器。"""
+    print(f"随机种子（Base32）：{secret}")
+    print("注意：请立即记录并登记到服务器；写入后本工具不再回显种子。")
+
+
 def _print_status(snapshot: StatusSnapshot) -> None:
     print(f"状态位：  {_decode_flags(snapshot.flags, protocol.DeviceFlag)}")
     print(f"复位原因：{RESET_CAUSES.get(snapshot.reset_cause, f'未知({snapshot.reset_cause})')}")
@@ -210,6 +218,8 @@ def _cmd_read_meta(device: Device, args: argparse.Namespace) -> int:
 
 def _cmd_write_seed(device: Device, args: argparse.Namespace) -> int:
     _connect(device)
+    if args.seed_generated:
+        _print_generated_seed(args.secret)
     crc = device.write_slot(secret=args.secret, digits=args.digits, period=args.period)
     meta = device.read_meta()
     _assert_meta_matches(meta, secret=args.secret, digits=args.digits, period=args.period)
@@ -243,14 +253,16 @@ def _cmd_set_calib(device: Device, args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_verify(device: Device, args: argparse.Namespace) -> int:
-    """完整的配置流程。"""
+def _cmd_setup(device: Device, args: argparse.Namespace) -> int:
+    """完整的配置与验收流程（对时、写种子、读回、屏上码比对、状态）。"""
     info = _connect(device)
     print(f"[1/5] 握手：OK（协议 v{info.proto_ver}，固件 {info.fw_version}）")
 
     sent_ms, readback_ms = device.set_time()
     print(f"[2/5] 对时：OK（回读误差 {readback_ms - sent_ms:+d} ms）")
 
+    if args.seed_generated:
+        _print_generated_seed(args.secret)
     crc = device.write_slot(secret=args.secret, digits=args.digits, period=args.period)
     print(f"[3/5] 写入种子：OK（config_crc16=0x{crc:04X}）")
 
@@ -279,11 +291,28 @@ def _cmd_verify(device: Device, args: argparse.Namespace) -> int:
 
 
 def _validate_write_seed(args: argparse.Namespace) -> None:
-    args.secret = totp.normalize_secret(args.secret)
+    if args.secret is None:
+        args.secret = totp.generate_secret(args.random_bytes)
+        args.seed_generated = True
+    else:
+        args.secret = totp.normalize_secret(args.secret)
+        args.seed_generated = False
     if not protocol.DIGITS_MIN <= args.digits <= protocol.DIGITS_MAX:
         raise ValueError(f"--digits 必须在 {protocol.DIGITS_MIN}..{protocol.DIGITS_MAX}")
     if not protocol.PERIOD_MIN <= args.period <= protocol.PERIOD_MAX:
         raise ValueError(f"--period 必须在 {protocol.PERIOD_MIN}..{protocol.PERIOD_MAX} 秒")
+
+
+def _random_bytes_arg(text: str) -> int:
+    try:
+        value = int(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError("必须是整数")
+    if not totp.MIN_SECRET_BYTES <= value <= totp.MAX_SECRET_BYTES:
+        raise argparse.ArgumentTypeError(
+            f"必须在 {totp.MIN_SECRET_BYTES}..{totp.MAX_SECRET_BYTES} 字节"
+        )
+    return value
 
 
 def _validate_set_calib(args: argparse.Namespace) -> None:
@@ -292,8 +321,22 @@ def _validate_set_calib(args: argparse.Namespace) -> None:
         raise ValueError(f"校准值必须在 ±{limit}（0.01 ppm）内")
 
 
-def _add_seed_arguments(parser: argparse.ArgumentParser, *, verify: bool = False) -> None:
-    parser.add_argument("secret", help="Base32 种子（A-Z 与 2-7；可带空格与填充，写入前规范化）")
+def _add_seed_arguments(parser: argparse.ArgumentParser, *, setup: bool = False) -> None:
+    parser.add_argument(
+        "secret",
+        nargs="?",
+        help="Base32 种子（A-Z 与 2-7；可带空格与填充，写入前规范化）；缺省时生成随机种子",
+    )
+    parser.add_argument(
+        "--random-bytes",
+        type=_random_bytes_arg,
+        default=totp.DEFAULT_SECRET_BYTES,
+        metavar="N",
+        help=(
+            f"随机种子字节数 {totp.MIN_SECRET_BYTES}..{totp.MAX_SECRET_BYTES}"
+            f"（默认 {totp.DEFAULT_SECRET_BYTES}，仅未给出种子时生效）"
+        ),
+    )
     parser.add_argument(
         "--digits",
         type=int,
@@ -306,7 +349,7 @@ def _add_seed_arguments(parser: argparse.ArgumentParser, *, verify: bool = False
         default=30,
         help=f"口令周期秒数 {protocol.PERIOD_MIN}..{protocol.PERIOD_MAX}（默认 30）",
     )
-    if verify:
+    if setup:
         parser.add_argument("-y", "--yes", action="store_true", help="跳过屏上码人工比对（脚本用）")
 
 
@@ -319,7 +362,9 @@ def _build_parser() -> argparse.ArgumentParser:
             "  provision.py -p /dev/ttyUSB0 ping\n"
             "  provision.py -p /dev/ttyUSB0 set-time\n"
             "  provision.py -p /dev/ttyUSB0 write-seed JBSWY3DPEHPK3PXP --digits 6\n"
-            "  provision.py -p /dev/ttyUSB0 verify JBSWY3DPEHPK3PXP --yes\n"
+            "  provision.py -p /dev/ttyUSB0 write-seed\n"
+            "  provision.py -p /dev/ttyUSB0 setup JBSWY3DPEHPK3PXP --yes\n"
+            "  provision.py -p /dev/ttyUSB0 setup --yes\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -347,7 +392,7 @@ def _build_parser() -> argparse.ArgumentParser:
     read_meta = sub.add_parser("read-meta", help="读取配置元信息（不回显种子）")
     read_meta.set_defaults(handler=_cmd_read_meta)
 
-    write_seed = sub.add_parser("write-seed", help="写入种子并读回比对")
+    write_seed = sub.add_parser("write-seed", help="写入种子并读回比对（不给种子则随机生成）")
     _add_seed_arguments(write_seed)
     write_seed.set_defaults(handler=_cmd_write_seed, validate=_validate_write_seed)
 
@@ -362,9 +407,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     calib.set_defaults(handler=_cmd_set_calib, validate=_validate_set_calib)
 
-    verify = sub.add_parser("verify", help="完整流程：对时→写种子→读回→屏上码比对→状态")
-    _add_seed_arguments(verify, verify=True)
-    verify.set_defaults(handler=_cmd_verify, validate=_validate_write_seed)
+    setup = sub.add_parser(
+        "setup", help="完整流程：对时→写种子→读回→屏上码比对→状态（不给种子则随机生成）"
+    )
+    _add_seed_arguments(setup, setup=True)
+    setup.set_defaults(handler=_cmd_setup, validate=_validate_write_seed)
 
     return parser
 

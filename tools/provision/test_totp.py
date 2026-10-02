@@ -84,5 +84,29 @@ class SecretTests(unittest.TestCase):
             totp.normalize_secret("A" * 57 + "A")  # 58 字符
 
 
+class RandomSecretTests(unittest.TestCase):
+    def test_default_secret_is_canonical_32_chars(self) -> None:
+        secret = totp.generate_secret()
+        self.assertRegex(secret, r"^[A-Z2-7]{32}$")
+        self.assertEqual(len(totp.decode_secret(secret)), totp.DEFAULT_SECRET_BYTES)
+
+    def test_requested_length_roundtrips_canonical_base32(self) -> None:
+        for num_bytes in (1, 10, totp.MAX_SECRET_BYTES):
+            with self.subTest(num_bytes=num_bytes):
+                secret = totp.generate_secret(num_bytes)
+                self.assertEqual(len(totp.decode_secret(secret)), num_bytes)
+                self.assertEqual(totp.normalize_secret(secret), secret)
+                self.assertNotIn("=", secret)
+
+    def test_successive_seeds_differ(self) -> None:
+        self.assertNotEqual(totp.generate_secret(), totp.generate_secret())
+
+    def test_rejects_out_of_range_length(self) -> None:
+        for num_bytes in (0, totp.MAX_SECRET_BYTES + 1):
+            with self.subTest(num_bytes=num_bytes):
+                with self.assertRaises(ValueError):
+                    totp.generate_secret(num_bytes)
+
+
 if __name__ == "__main__":
     unittest.main()

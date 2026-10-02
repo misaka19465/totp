@@ -11,6 +11,7 @@ import client
 import protocol
 import provision
 import session
+import totp
 from fake_device import FakeDevice, FakeSerial
 
 TEST_SECRET = "JBSWY3DPEHPK3PXP"
@@ -100,6 +101,25 @@ class SeedCommandTests(CliTestBase):
         self.assertEqual(self.model.digits, 4)
         self.assertEqual(self.model.period, 15)
 
+    def test_write_seed_without_secret_generates_random(self) -> None:
+        code, out, _ = self.run_cli("write-seed")
+        self.assertEqual(code, 0)
+        self.assertRegex(out, r"随机种子（Base32）：[A-Z2-7]{32}")
+        self.assertIsNotNone(self.model.secret)
+        self.assertIn(self.model.secret, out)
+        self.assertEqual(self.model.digits, 6)
+
+    def test_write_seed_random_bytes_option(self) -> None:
+        code, out, _ = self.run_cli("write-seed", "--random-bytes", "10")
+        self.assertEqual(code, 0)
+        self.assertRegex(out, r"随机种子（Base32）：[A-Z2-7]{16}")
+        self.assertEqual(self.model.secret, out.split("随机种子（Base32）：")[1].splitlines()[0])
+
+    def test_given_secret_does_not_print_random_notice(self) -> None:
+        code, out, _ = self.run_cli("write-seed", TEST_SECRET)
+        self.assertEqual(code, 0)
+        self.assertNotIn("随机种子", out)
+
     def test_read_meta_empty(self) -> None:
         code, out, _ = self.run_cli("read-meta")
         self.assertEqual(code, 0)
@@ -138,15 +158,22 @@ class ArgumentTests(CliTestBase):
             self.run_cli("write-seed", TEST_SECRET, "--digits", "0")
         self.assertEqual(ctx.exception.code, 2)
 
+    def test_random_bytes_out_of_range_is_usage_error(self) -> None:
+        for value in ("0", str(totp.MAX_SECRET_BYTES + 1), "abc"):
+            with self.subTest(value=value):
+                with self.assertRaises(SystemExit) as ctx:
+                    self.run_cli("write-seed", "--random-bytes", value)
+                self.assertEqual(ctx.exception.code, 2)
+
     def test_calib_out_of_range_is_usage_error(self) -> None:
         with self.assertRaises(SystemExit) as ctx:
             self.run_cli("set-calib", "40000")
         self.assertEqual(ctx.exception.code, 2)
 
 
-class VerifyTests(CliTestBase):
-    def test_verify_full_flow(self) -> None:
-        code, out, _ = self.run_cli("verify", TEST_SECRET, "--yes")
+class SetupTests(CliTestBase):
+    def test_setup_full_flow(self) -> None:
+        code, out, _ = self.run_cli("setup", TEST_SECRET, "--yes")
         self.assertEqual(code, 0)
         for step in ("[1/5]", "[2/5]", "[3/5]", "[4/5]", "[5/5]"):
             self.assertIn(step, out)
@@ -154,15 +181,22 @@ class VerifyTests(CliTestBase):
         self.assertEqual(self.model.secret, TEST_SECRET)
         self.assertEqual(self.model.time_flags, int(protocol.TimeFlag.TRUSTED))
 
-    def test_verify_reports_screen_mismatch(self) -> None:
+    def test_setup_without_secret_generates_random(self) -> None:
+        code, out, _ = self.run_cli("setup", "--yes")
+        self.assertEqual(code, 0)
+        self.assertRegex(out, r"随机种子（Base32）：[A-Z2-7]{32}")
+        self.assertIn(self.model.secret, out)
+        self.assertEqual(self.model.time_flags, int(protocol.TimeFlag.TRUSTED))
+
+    def test_setup_reports_screen_mismatch(self) -> None:
         with mock.patch.object(provision, "_ask_screen_match", return_value=False):
-            code, _, err = self.run_cli("verify", TEST_SECRET)
+            code, _, err = self.run_cli("setup", TEST_SECRET)
         self.assertEqual(code, 1)
         self.assertIn("不一致", err)
 
-    def test_verify_readback_mismatch_exits_1(self) -> None:
+    def test_setup_readback_mismatch_exits_1(self) -> None:
         self.model.meta_crc_xor = 0x0100
-        code, _, err = self.run_cli("verify", TEST_SECRET, "--yes")
+        code, _, err = self.run_cli("setup", TEST_SECRET, "--yes")
         self.assertEqual(code, 1)
         self.assertIn("读回配置与写入不一致", err)
 
