@@ -2,7 +2,8 @@
  * @file    ht1621.h
  * @brief   HT1621B LCD 驱动（3 线串行接口）与 EDS826 段码屏的位映射。
  *
- * 器件：HT1621B（SSOP-28），1/3 bias、1/4 duty，片内 RC 振荡器 256 kHz，
+ * 器件：HT1621BMS/TR（MSKSEMI，SSOP-28；HT1621B 兼容，引脚号以本板原理图为准），
+ *       1/3 bias、1/4 duty，片内 RC 振荡器 256 kHz，
  *       显示 RAM 为 32 地址 × 4 bit（每个地址对应一个 SEG 的四路 COM 位）。
  *
  * 显示屏：EDS826S(T)P15V3B（DALIAN QIYUN），6 位 7 段 + 5 个小数点，
@@ -85,11 +86,15 @@ void ht1621_write(uint8_t addr, const uint8_t *data, uint8_t len);
 void ht1621_clear(void);
 
 /**
- * @brief  打开/关闭 HT1621B 系统振荡器。
- * @param  on true 打开，false 关闭。
- * @note   关振荡器只能停掉驱动波形，HT1621B 自身静态电流仍在数十 µA 量级。
- *         本板 VLCD 直连电池、未做断电器件，"屏幕常亮" 是硬性功耗前提；
- *         整机待机电流预算见 docs/hardware.md。
+ * @brief  打开/关闭 HT1621B 系统（振荡器与 LCD 偏压发生器）。
+ * @param  on true 恢复振荡器与显示；false 进入 Power down，显示变空。
+ * @note   on=false 按数据手册顺序先发 LCD OFF 关偏压发生器，再发 SYS DIS
+ *         停振进入 Power down：显示变空，芯片静态电流降到 ISTB（3 V 典型
+ *         0.1 µA、最大 5 µA），与"只停波形"不同。本设备要求屏幕常亮，
+ *         运行期间不得调用 on=false。
+ * @note   on=true 会补发 LCD ON 再 SYS EN，显示内容恢复为 RAM 中的旧值
+ *         （SYS EN 单独不能重新打开偏压发生器）。
+ *         本板 VLCD 直连电池、未做断电器件；整机功耗预算见 docs/hardware.md。
  */
 void ht1621_oscillator(bool on);
 

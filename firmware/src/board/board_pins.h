@@ -3,7 +3,7 @@
  * @brief   硬件引脚与外部器件资源映射（板：mshv-checkin / Board3）。
  *
  * 本文件是固件与原理图的唯一对照点：任何引脚改动都必须同时更新此处与原理图。
- * 原理图依据：STM32L031F6P6 (TSSOP-20) + HT1621B (SSOP-28) + EDS826 六位段码屏，
+ * 原理图依据：STM32L031F6P6 (TSSOP-20) + HT1621BMS/TR (MSKSEMI, SSOP-28) + EDS826 六位段码屏，
  * 网络名取自 EasyEDA 工程 mshv-checkin 的 Board3/Schematic3。
  */
 #ifndef BOARD_PINS_H
