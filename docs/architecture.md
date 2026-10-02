@@ -40,19 +40,22 @@ firmware/src/
 ├── main.c                 上电序列 + 主循环分发（唯一了解全局的模块）
 ├── board/
 │   └── board_pins.h       引脚映射（与原理图对照的唯一出处）
+├── common/
+│   └── crc16.{h,c}        CRC-16/CCITT-FALSE（帧/配置/存储记录共用）
 ├── drivers/               只依赖 CMSIS 寄存器定义
 │   ├── ht1621.{h,c}       HT1621B 三线串口
 │   ├── lcd_render.{h,c}   字形表、按位/按小数点写屏
 │   ├── usart2_hw.{h,c}    USART2 寄存器级字节收发（PA9/PA10，115200）
 │   ├── uart_link.{h,c}    帧编解码、CRC、重同步与会话状态机
 │   ├── plug_detect.{h,c}  插头插入检测（RX 边沿 EXTI 唤醒）
+│   ├── nvm.{h,c}          数据 EEPROM 字级擦写（1 KB，256 字）
 │   └── battery.{h,c}      VREFINT 测电量（无温度补偿）
-├── app/                   （待实现）仅依赖 drivers 与 services
+├── app/                   纯逻辑与应用状态，只依赖 common/drivers/services
 │   ├── totp.{h,c}         动态码计算（RFC 6238）
 │   ├── hmac_sha1.{h,c}    哈希原语
 │   ├── base32.{h,c}       种子解码
-│   ├── keystore.{h,c}     EEPROM 中的单点位种子存储
-│   └── proto.{h,c}        串口协议状态机
+│   ├── keystore.{h,c}     EEPROM 中的单点位配置存储（已实现）
+│   └── proto.{h,c}        串口协议状态机（待实现）
 └── services/              （待实现）横切关注点
     ├── clock_rtc.{h,c}    RTC 读写、校准、对时
     ├── power.{h,c}        Stop 模式进出、唤醒源配置
@@ -336,7 +339,9 @@ CN1 没有检测触点。可选方案：
 
 > 状态：第 2 步的驱动层已完成（`lcd_render`/`battery`/`uart_link`/`plug_detect`，
 > 其中 USART2 硬件层独立为 `usart2_hw`），主机侧测试覆盖帧编解码、CRC、重同步、
-> 唤醒窗口与 10 s 会话超时；与主循环/电源状态机的接线留待第 3 步。
+> 唤醒窗口与 10 s 会话超时；第 4 步已完成 HMAC-SHA1/TOTP 与 `keystore`
+> （含 `drivers/nvm` 字级擦写、独立记录 CRC、幂等写入与失败回滚，主机侧测试
+> 覆盖损坏/掉电场景），`proto` 待实现；与主循环/电源状态机的接线留待第 3 步。
 
 ## 11. 待实测与标定项
 

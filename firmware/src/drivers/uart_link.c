@@ -4,14 +4,9 @@
  */
 #include "uart_link.h"
 
+#include "crc16.h"
 #include "plug_detect.h"
 #include "usart2_hw.h"
-
-/* NOTE: 16 项半字节表，占 32 B Flash；算法与规范 §4.3 给出的一致。 */
-static const uint16_t CRC16_NIBBLE[16] = {
-    0x0000U, 0x1021U, 0x2042U, 0x3063U, 0x4084U, 0x50A5U, 0x60C6U, 0x70E7U,
-    0x8108U, 0x9129U, 0xA14AU, 0xB16BU, 0xC18CU, 0xD1ADU, 0xE1CEU, 0xF1EFU,
-};
 
 typedef enum {
     RX_WAIT_SOF = 0,
@@ -41,28 +36,11 @@ static uart_link_state_t s_state = UART_LINK_SLEEP;
 static uint32_t s_wake_start_ms = 0U;
 static uint32_t s_last_frame_ms = 0U;
 
-static uint16_t crc16_update(uint16_t crc, uint8_t byte)
-{
-    crc ^= (uint16_t)byte << 8;
-    crc = (uint16_t)((crc << 4) ^ CRC16_NIBBLE[crc >> 12]);
-    crc = (uint16_t)((crc << 4) ^ CRC16_NIBBLE[crc >> 12]);
-    return crc;
-}
-
-uint16_t uart_link_crc16(const uint8_t *data, size_t len)
-{
-    uint16_t crc = 0xFFFFU;
-    for (size_t i = 0U; i < len; i++) {
-        crc = crc16_update(crc, data[i]);
-    }
-    return crc;
-}
-
 static void rx_reset(void)
 {
     s_rx.state = RX_WAIT_SOF;
     s_rx.frame_start_ms = 0U;
-    s_rx.crc = 0xFFFFU;
+    s_rx.crc = CRC16_CCITT_FALSE_INIT;
     s_rx.crc_rx = 0U;
     s_rx.cmd = 0U;
     s_rx.seq = 0U;
@@ -116,7 +94,7 @@ static bool rx_feed(uint8_t byte, uint32_t now_ms)
     switch (s_rx.state) {
     case RX_WAIT_SOF:
         if (byte == UART_LINK_SOF) {
-            s_rx.crc = 0xFFFFU;
+            s_rx.crc = CRC16_CCITT_FALSE_INIT;
             s_rx.frame_start_ms = now_ms;
             s_rx.state = RX_CMD;
         }
@@ -229,7 +207,7 @@ bool uart_link_send(uint8_t cmd, uint8_t seq, const uint8_t *payload, uint8_t le
         return false;
     }
 
-    uint16_t crc = 0xFFFFU;
+    uint16_t crc = CRC16_CCITT_FALSE_INIT;
     crc = crc16_update(crc, cmd);
     crc = crc16_update(crc, seq);
     crc = crc16_update(crc, len);

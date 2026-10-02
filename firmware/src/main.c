@@ -9,6 +9,7 @@
 #include "battery.h"
 #include "board_pins.h"
 #include "ht1621.h"
+#include "keystore.h"
 #include "lcd_render.h"
 #include "stm32l031xx.h"
 
@@ -39,10 +40,12 @@ int main(void)
 
     ht1621_init();
 
-    /* NOTE: keystore 尚未实现，设备当前必然处于"未写入种子"状态：没有种子就
-     *       没有有效口令，数字位留空（空屏比错误码稳妥），DOT1 常亮提示配置。
-     *       状态语义与"故障时清空数字位"见 docs/requirements.md §4.0。 */
-    (void)lcd_render_show(0U, 0U, LCD_DOT_NO_SEED);
+    /* NOTE: clock_rtc/proto 尚未实现，设备只有两种可表达的状态：
+     *       无有效种子（DOT1）或已有种子但从未对时（DOT2，RTC 尚不存在）。
+     *       两种情况都没有可信口令，数字位留空（空屏比错误码稳妥）。
+     *       状态语义与并发规则见 docs/requirements.md §4.0。 */
+    const uint8_t dots = keystore_present() ? LCD_DOT_NEED_SYNC : LCD_DOT_NO_SEED;
+    (void)lcd_render_show(0U, 0U, dots);
 
     /* TODO: 电量阈值上报 DOT4（FR-7 / §4.1）在状态机落地后接入 */
     battery_init();

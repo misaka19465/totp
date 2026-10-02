@@ -64,10 +64,13 @@ add_executable(totp_token.elf
   src/main.c
   src/app/base32.c
   src/app/hmac_sha1.c
+  src/app/keystore.c
   src/app/totp.c
+  src/common/crc16.c
   src/drivers/battery.c
   src/drivers/ht1621.c
   src/drivers/lcd_render.c
+  src/drivers/nvm.c
   src/drivers/plug_detect.c
   src/drivers/uart_link.c
   src/drivers/usart2_hw.c
@@ -84,6 +87,7 @@ target_include_directories(totp_token.elf PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src
   ${CMAKE_CURRENT_SOURCE_DIR}/src/app
   ${CMAKE_CURRENT_SOURCE_DIR}/src/board
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/common
   ${CMAKE_CURRENT_SOURCE_DIR}/src/drivers
   ${CMAKE_CURRENT_SOURCE_DIR}/src/hal
 )

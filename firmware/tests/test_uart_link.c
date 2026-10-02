@@ -8,6 +8,7 @@
  */
 #include "test_util.h"
 
+#include "crc16.h"
 #include "fake_plug_detect.h"
 #include "fake_usart2_hw.h"
 #include "uart_link.h"
@@ -85,12 +86,12 @@ void test_uart_link(void)
     uart_link_frame_t frame;
 
     /* ---- CRC 自测向量与交叉校验 ---- */
-    CHECK_U32(uart_link_crc16((const uint8_t *)"123456789", 9U), 0x29B1U);
-    CHECK_U32(uart_link_crc16(NULL, 0U), 0xFFFFU);
+    CHECK_U32(crc16_ccitt_false((const uint8_t *)"123456789", 9U), 0x29B1U);
+    CHECK_U32(crc16_ccitt_false(NULL, 0U), 0xFFFFU);
     static const uint8_t crc_sample[] = { 0x00, 0xaa, 0x55, 0xff, 0x10, 0x21 };
-    CHECK_U32(uart_link_crc16(crc_sample, sizeof crc_sample),
+    CHECK_U32(crc16_ccitt_false(crc_sample, sizeof crc_sample),
               ref_crc16(crc_sample, sizeof crc_sample));
-    CHECK_U32(uart_link_crc16(&SET_TIME_REQ[1], 11U), ref_crc16(&SET_TIME_REQ[1], 11U));
+    CHECK_U32(crc16_ccitt_false(&SET_TIME_REQ[1], 11U), ref_crc16(&SET_TIME_REQ[1], 11U));
 
     /* ---- 初始化后处于 SLEEP，USART 关闭 ---- */
     fake_usart2_hw_reset();

@@ -82,13 +82,6 @@ uart_link_state_t uart_link_state(void);
 bool uart_link_poll(uint32_t now_ms, uart_link_frame_t *frame_out);
 
 /**
- * @brief  计算 CRC-16/CCITT-FALSE（poly=0x1021, init=0xFFFF, 不反转, xorout=0）。
- * @param  data 待校验字节（不可为 NULL，除非 len == 0）
- * @param  len  字节数；为 0 时返回初值 0xFFFF
- */
-uint16_t uart_link_crc16(const uint8_t *data, size_t len);
-
-/**
  * @brief  组帧并阻塞发送。
  * @param  cmd     命令码（响应须自带 |0x80）
  * @param  seq     序号
