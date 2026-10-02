@@ -428,7 +428,8 @@ EEPROM 写周期在 STM32L0 上为毫秒级，整条写种子操作 <50 ms，上
 协议定稿后按 architecture.md §3/§10 落地：
 
 1. 固件 `drivers/uart_link.{h,c}`（字节收发 + 帧收发 + 超时）与
-   `drivers/plug_detect.{h,c}`（EXTI 唤醒 + 唤醒窗口）；
+   `drivers/plug_detect.{h,c}`（EXTI 唤醒 + 唤醒窗口）——**已实现**：
+   USART2 硬件层为 `drivers/usart2_hw.{h,c}`，帧/会话逻辑含主机侧测试；
 2. 固件 `app/proto.{h,c}`（命令分派 + 校验 + 与 keystore/clock_rtc 对接）；
 3. 上位机 `tools/provision/provision.py`（本规范 §6 的 CLI：ping/set-time/
    write-seed/read-meta/erase/status/verify），依赖 `pyserial`，参考编解码已就绪。

@@ -13,14 +13,18 @@ enable_testing()
 add_executable(test_app
   test_main.c
   fake_ht1621.c
+  fake_plug_detect.c
+  fake_usart2_hw.c
   test_base32.c
   test_hmac_sha1.c
   test_lcd_render.c
   test_totp.c
+  test_uart_link.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/app/base32.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/app/hmac_sha1.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/app/totp.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/drivers/lcd_render.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../src/drivers/uart_link.c
 )
 
 target_include_directories(test_app PRIVATE

@@ -68,6 +68,9 @@ add_executable(totp_token.elf
   src/drivers/battery.c
   src/drivers/ht1621.c
   src/drivers/lcd_render.c
+  src/drivers/plug_detect.c
+  src/drivers/uart_link.c
+  src/drivers/usart2_hw.c
 )
 
 target_compile_options(totp_token.elf PRIVATE

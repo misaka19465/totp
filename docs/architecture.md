@@ -43,8 +43,9 @@ firmware/src/
 ├── drivers/               只依赖 CMSIS 寄存器定义
 │   ├── ht1621.{h,c}       HT1621B 三线串口
 │   ├── lcd_render.{h,c}   字形表、按位/按小数点写屏
-│   ├── uart_link.{h,c}    耳机口串口的字节收发与超时
-│   ├── plug_detect.{h,c}  插头插入检测（RX 边沿 + 接收窗口）
+│   ├── usart2_hw.{h,c}    USART2 寄存器级字节收发（PA9/PA10，115200）
+│   ├── uart_link.{h,c}    帧编解码、CRC、重同步与会话状态机
+│   ├── plug_detect.{h,c}  插头插入检测（RX 边沿 EXTI 唤醒）
 │   └── battery.{h,c}      VREFINT 测电量（无温度补偿）
 ├── app/                   （待实现）仅依赖 drivers 与 services
 │   ├── totp.{h,c}         动态码计算（RFC 6238）
@@ -332,6 +333,10 @@ CN1 没有检测触点。可选方案：
 4. 应用层：HMAC-SHA1 → TOTP → `keystore` → `proto`
 5. 低功耗收尾：按 §4.5 逐项核对，实测电流
 6. 配置工具：`tools/provision`（写种子、对时、读回比对）
+
+> 状态：第 2 步的驱动层已完成（`lcd_render`/`battery`/`uart_link`/`plug_detect`，
+> 其中 USART2 硬件层独立为 `usart2_hw`），主机侧测试覆盖帧编解码、CRC、重同步、
+> 唤醒窗口与 10 s 会话超时；与主循环/电源状态机的接线留待第 3 步。
 
 ## 11. 待实测与标定项
 
