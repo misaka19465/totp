@@ -28,6 +28,10 @@
 #define CLOCK_RTC_RSF_TIMEOUT_MS     10U
 #define CLOCK_RTC_SHPF_TIMEOUT_MS    20U
 #define CLOCK_RTC_RECALPF_TIMEOUT_MS 100U
+#define CLOCK_RTC_ALRAWF_TIMEOUT_MS  20U
+
+/* RTC 闹钟内部唤醒线：EXTI 线 17（RM0367 §13.3.2 唤醒事件连接表） */
+#define CLOCK_RTC_ALARM_EXTI_LINE    (1UL << 17)
 
 /* RTC_PRER：PREDIV_A = 127，PREDIV_S = 255 → 32768/(127+1)/256 = 1 Hz，
  * 亚秒分辨率 1/256 s（serial-protocol.md §5.4 的量化粒度） */
@@ -454,4 +458,59 @@ bool clock_rtc_calib_active(void)
 {
     return s_rtc_ready &&
            (RTC->CALR & (RTC_CALR_CALP | RTC_CALR_CALM)) != 0U;
+}
+
+bool clock_rtc_alarm_set(uint64_t unix_ms)
+{
+    if (!s_rtc_ready) {
+        return false;
+    }
+
+    uint64_t fire_s = unix_ms / 1000U;
+    const uint64_t now_s = clock_rtc_now_ms() / 1000U;
+    if (fire_s <= now_s) {
+        fire_s = now_s + 1U;   /* 目标整秒已到：顺延，避免立即触发 */
+    }
+
+    rtc_time_civil_t civil;
+    if (!rtc_time_from_unix(fire_s, &civil)) {
+        return false;
+    }
+
+    rtc_unlock();
+    RTC->CR &= ~RTC_CR_ALRAE;
+    if (!wait_mask_set(&RTC->ISR, RTC_ISR_ALRAWF, CLOCK_RTC_ALRAWF_TIMEOUT_MS)) {
+        rtc_lock();
+        return false;
+    }
+    /* NOTE: 只清 ALRAF；ISR 的其它位是只读/写 1 触发位（如 INIT），
+     *       与 clock_rtc_set_unix_ms 的写法保持同一模式。 */
+    RTC->ISR = ~(RTC_ISR_ALRAF | RTC_ISR_INIT) | (RTC->ISR & RTC_ISR_INIT);
+    RTC->ALRMAR = RTC_ALRMAR_MSK4 |               /* 日期不参与匹配 */
+                  (uint32_t)rtc_time_bin_to_bcd(civil.second) |
+                  ((uint32_t)rtc_time_bin_to_bcd(civil.minute) << RTC_ALRMAR_MNU_Pos) |
+                  ((uint32_t)rtc_time_bin_to_bcd(civil.hour) << RTC_ALRMAR_HU_Pos);
+    RTC->CR |= RTC_CR_ALRAE | RTC_CR_ALRAIE;
+    rtc_lock();
+
+    EXTI->PR = CLOCK_RTC_ALARM_EXTI_LINE;   /* 清残留挂起，避免假唤醒 */
+    EXTI->IMR |= CLOCK_RTC_ALARM_EXTI_LINE;
+    NVIC_EnableIRQ(RTC_IRQn);
+    return true;
+}
+
+/**
+ * @brief  RTC 中断服务：只处理闹钟 A（本工程唯一的 RTC 中断源）。
+ * @note   匹配字段在整秒内保持相等，若只清标志会重复触发；这里同时停用
+ *         ALRAE，等待主循环下次入睡前重新武装。
+ */
+void RTC_IRQHandler(void)
+{
+    if ((RTC->ISR & RTC_ISR_ALRAF) != 0U) {
+        rtc_unlock();
+        RTC->CR &= ~RTC_CR_ALRAE;
+        RTC->ISR = ~(RTC_ISR_ALRAF | RTC_ISR_INIT) | (RTC->ISR & RTC_ISR_INIT);
+        rtc_lock();
+        EXTI->PR = CLOCK_RTC_ALARM_EXTI_LINE;
+    }
 }

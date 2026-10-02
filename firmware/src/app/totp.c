@@ -65,3 +65,15 @@ uint32_t totp_seconds_remaining(uint64_t unix_seconds, uint32_t period_s)
     const uint32_t elapsed = (uint32_t)(unix_seconds % period_s);
     return period_s - elapsed;
 }
+
+uint64_t totp_next_boundary_ms(uint64_t unix_ms, uint32_t period_s)
+{
+    if (period_s == 0U) {
+        return 0U;
+    }
+    const uint64_t now_s = unix_ms / 1000U;
+    /* totp_seconds_remaining 至少为 1，因此边界严格晚于当前秒；
+     * 当前秒内的毫秒部分被舍去，边界落在整秒上。 */
+    const uint32_t remaining = totp_seconds_remaining(now_s, period_s);
+    return (now_s + remaining) * 1000U;
+}

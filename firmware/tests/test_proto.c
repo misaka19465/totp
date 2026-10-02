@@ -117,7 +117,7 @@ static bool send_raw(const uint8_t *bytes, size_t len)
         return false;
     }
     fake_usart2_hw_clear_tx();
-    return proto_handle_request(&frame, &s_status);
+    return proto_handle_request(&frame, &s_status, NULL);
 }
 
 static bool send_request(uint8_t cmd, uint8_t seq, const uint8_t *payload, uint8_t len)
@@ -425,8 +425,8 @@ void test_proto(void)
     uart_link_frame_t dummy;
     memset(&dummy, 0, sizeof dummy);
     dummy.cmd = PROTO_CMD_PING;
-    CHECK(!proto_handle_request(NULL, NULL));
-    CHECK(!proto_handle_request(NULL, &s_status));
-    CHECK(!proto_handle_request(&dummy, NULL));
+    CHECK(!proto_handle_request(NULL, NULL, NULL));
+    CHECK(!proto_handle_request(NULL, &s_status, NULL));
+    CHECK(!proto_handle_request(&dummy, NULL, NULL));
     CHECK(fake_usart2_hw_sent_len() == 0U);
 }

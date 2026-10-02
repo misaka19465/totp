@@ -97,11 +97,14 @@ typedef struct {
  * @brief  处理一帧请求：执行命令并回一条响应。
  * @param  request 已通过 CRC 校验、LEN ≤ 64 的请求帧。
  * @param  status  设备状态快照（不可为 NULL）。
+ * @param  result_out 输出本条请求的响应状态码（可为 NULL）；仅在返回 true 时
+ *                   有效，主循环据此判断 SET_TIME/WRITE_SLOT 是否成功。
  * @return 响应已交给链路返回 true；参数非法或链路已休眠返回 false。
  * @note   除发送失败外，任何请求都会得到响应（错误只含状态字节，§4.5）；
  *         响应延迟远低于 §7 的 200 ms 上限（存储命令最坏约 90 ms）。
  */
 bool proto_handle_request(const uart_link_frame_t *request,
-                          const proto_status_t *status);
+                          const proto_status_t *status,
+                          proto_result_t *result_out);
 
 #endif /* PROTO_H */

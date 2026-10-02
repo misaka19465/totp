@@ -76,7 +76,10 @@ add_executable(totp_token.elf
   src/drivers/uart_link.c
   src/drivers/usart2_hw.c
   src/services/clock_rtc.c
+  src/services/power.c
   src/services/rtc_time.c
+  src/services/state_indicator.c
+  src/services/watchdog.c
 )
 
 target_compile_options(totp_token.elf PRIVATE

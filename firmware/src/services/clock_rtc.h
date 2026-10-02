@@ -88,4 +88,16 @@ bool clock_rtc_set_calib(int16_t centi_ppm, int16_t *applied_centi_ppm);
 /** 是否启用了数字校准（GET_STATUS flags 的 CALIB_ACTIVE 位用）。 */
 bool clock_rtc_calib_active(void);
 
+/**
+ * @brief  武装 RTC 闹钟 A（单次、整秒时:分:秒匹配，日期不参与）。
+ * @param  unix_ms 目标时刻（UTC 毫秒）；实际触发点取其所在整秒，若该整秒
+ *                 此刻已到/已过，则顺延到下一秒。
+ * @return 写入成功返回 true；RTC 未就绪、时间超出 2000..2099 或硬件超时
+ *         返回 false（失败时闹钟保持停用，不会残留半套配置）。
+ * @note   只适用于 24 h 以内的期限（主循环最长为 10 min 电量采集）。
+ *         触发路径：RTC 闹钟 → EXTI 17 → NVIC RTC_IRQn；RTC_IRQHandler
+ *         清标志并停用闹钟，主循环每次入睡前重新武装。
+ */
+bool clock_rtc_alarm_set(uint64_t unix_ms);
+
 #endif /* CLOCK_RTC_H */

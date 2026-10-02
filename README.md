@@ -103,7 +103,15 @@ ctest --test-dir firmware/tests/build --output-on-failure
 - 已完成应用层 `app/proto`（serial-protocol.md §5 全部 8 条命令的分派、
   字段校验与响应组帧：PING/GET_TIME/SET_TIME/GET_STATUS/WRITE_SLOT/
   READ_META/ERASE_SLOT/SET_CALIB），与 keystore/clock_rtc 对接；
-  主机侧测试用 §8 逐字节向量 + EEPROM 失败注入覆盖，合计 5940 项断言，
-  全绿；
-- 其余功能（电源/看门狗、主循环接线、配置工具 `tools/provision`）尚未实现，
-  落地顺序见 `docs/architecture.md` §10。
+  主机侧测试用 §8 逐字节向量 + EEPROM 失败注入覆盖；
+- 已完成服务层 `services/power`（Stop 档位与进出）、`services/watchdog`
+  （IWDG 4 s、复位原因归并、BKP2R 故障锁存）与 `services/state_indicator`
+  （状态点掩码、极低电量 1 Hz 闪烁、故障清空数字位）；
+- 已完成主循环接线（`main.c`）：空闲时按"口令窗口边界 / 显示重写（2 s，
+  极低电量 1 s）/ 电量采集（10 min）"取最早期限武装 RTC 闹钟进 Stop，
+  PA10 EXTI 唤醒插头会话；会话期间保持清醒，口令只在窗口边界重算，
+  对时/写种子成功后立即刷新显示并清除故障锁存；RTC 不可用时降级为
+  仅 EXTI 唤醒并锁存故障（不进入 IWDG 复位循环）；
+  主机侧测试合计 5981 项断言，全绿；
+- 剩余：配置工具 `tools/provision`（写种子、对时、读回比对）与实机标定，
+  落地顺序见 `docs/architecture.md` §10/§11。

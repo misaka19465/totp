@@ -56,4 +56,13 @@ bool totp_generate(const uint8_t *secret, size_t secret_len,
  */
 uint32_t totp_seconds_remaining(uint64_t unix_seconds, uint32_t period_s);
 
+/**
+ * @brief  下一个 TOTP 窗口边界的 UTC 毫秒时刻。
+ * @param  unix_ms  当前 UTC 毫秒。
+ * @param  period_s 步长（秒）；为 0 时返回 0。
+ * @return 严格大于 unix_ms 的窗口边界毫秒值（对齐到整秒）。
+ * @note   主循环用它把唤醒闹钟精确设在口令更新时刻（architecture.md §4.4）。
+ */
+uint64_t totp_next_boundary_ms(uint64_t unix_ms, uint32_t period_s);
+
 #endif /* TOTP_H */

@@ -72,4 +72,18 @@ void test_totp(void)
     CHECK_U32(totp_seconds_remaining(0U, 30U), 30U);
     CHECK_U32(totp_seconds_remaining(89U, 30U), 1U);
     CHECK_U32(totp_seconds_remaining(100U, 0U), 0U);
+
+    /* 窗口边界：严格晚于当前时刻、对齐整秒（主循环的入睡期限） */
+    CHECK(totp_next_boundary_ms(0U, 30U) == 30000U);
+    CHECK(totp_next_boundary_ms(29000U, 30U) == 30000U);
+    CHECK(totp_next_boundary_ms(30000U, 30U) == 60000U);
+    CHECK(totp_next_boundary_ms(30001U, 30U) == 60000U);
+    CHECK(totp_next_boundary_ms(59999U, 30U) == 60000U);
+    CHECK(totp_next_boundary_ms(60000U, 30U) == 90000U);
+    /* 非 30 s 整数倍的步长（如 45 s）同样落在整秒边界 */
+    CHECK(totp_next_boundary_ms(1000U, 45U) == 45000U);
+    CHECK(totp_next_boundary_ms(45000U, 45U) == 90000U);
+    CHECK(totp_next_boundary_ms(99000U, 45U) == 135000U);
+    CHECK(totp_next_boundary_ms(123456U, 30U) == 150000U);
+    CHECK(totp_next_boundary_ms(1000U, 0U) == 0U);
 }

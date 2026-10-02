@@ -99,9 +99,14 @@ static uint16_t device_flags(const proto_status_t *status)
 }
 
 /** 发送仅带状态码的响应（长度为 0 时 data 可为 NULL） */
+/* NOTE: 结果码经文件级变量回传给 proto_handle_request 的 result_out：
+ *       协议是严格的单请求串行模型（§4.5），不存在并发/reentrancy。 */
+static proto_result_t s_last_result = PROTO_ERR_INTERNAL;
+
 static bool respond(const uart_link_frame_t *request, proto_result_t result,
                     const uint8_t *data, uint8_t data_len)
 {
+    s_last_result = result;
     return uart_link_send_response(request, (uint8_t)result, data, data_len);
 }
 
@@ -281,22 +286,30 @@ static bool handle_set_calib(const uart_link_frame_t *request)
 }
 
 bool proto_handle_request(const uart_link_frame_t *request,
-                          const proto_status_t *status)
+                          const proto_status_t *status,
+                          proto_result_t *result_out)
 {
     if (request == NULL || status == NULL) {
         return false;
     }
 
+    s_last_result = PROTO_ERR_INTERNAL;
+    bool sent;
     switch (request->cmd) {
-    case PROTO_CMD_PING:       return handle_ping(request, status);
-    case PROTO_CMD_GET_TIME:   return handle_get_time(request);
-    case PROTO_CMD_SET_TIME:   return handle_set_time(request);
-    case PROTO_CMD_GET_STATUS: return handle_get_status(request, status);
-    case PROTO_CMD_WRITE_SLOT: return handle_write_slot(request);
-    case PROTO_CMD_READ_META:  return handle_read_meta(request);
-    case PROTO_CMD_ERASE_SLOT: return handle_erase_slot(request);
-    case PROTO_CMD_SET_CALIB:  return handle_set_calib(request);
+    case PROTO_CMD_PING:       sent = handle_ping(request, status); break;
+    case PROTO_CMD_GET_TIME:   sent = handle_get_time(request); break;
+    case PROTO_CMD_SET_TIME:   sent = handle_set_time(request); break;
+    case PROTO_CMD_GET_STATUS: sent = handle_get_status(request, status); break;
+    case PROTO_CMD_WRITE_SLOT: sent = handle_write_slot(request); break;
+    case PROTO_CMD_READ_META:  sent = handle_read_meta(request); break;
+    case PROTO_CMD_ERASE_SLOT: sent = handle_erase_slot(request); break;
+    case PROTO_CMD_SET_CALIB:  sent = handle_set_calib(request); break;
     default:
-        return respond(request, PROTO_ERR_UNKNOWN_CMD, NULL, 0U);
+        sent = respond(request, PROTO_ERR_UNKNOWN_CMD, NULL, 0U);
+        break;
     }
+    if (result_out != NULL) {
+        *result_out = s_last_result;
+    }
+    return sent;
 }
