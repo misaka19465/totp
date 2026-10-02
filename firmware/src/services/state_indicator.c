@@ -34,7 +34,7 @@ uint8_t state_indicator_dot_mask(const state_indicator_state_t *state,
         break;
     case BATTERY_LEVEL_CRITICAL:
         /* NOTE: 极低档闪烁 = 1 Hz、50% 占空比；主循环在极低档把显示重写
-         *       间隔缩短到 1 s，保证该相位真实翻转（§4.1）。 */
+         *       间隔缩短到 1 s，保证该相位真实翻转。 */
         if ((unix_seconds % 2U) == 0U) {
             mask |= LCD_DOT_LOW_BAT;
         }

@@ -3,7 +3,7 @@
  * @brief   CRC-16/CCITT-FALSE 公共实现（poly=0x1021, init=0xFFFF,
  *          refin/refout=false, xorout=0）。
  *
- * 同一算法服务三处，规范见 docs/serial-protocol.md §4.3/§5.7：
+ * 同一算法服务三处：
  *   - 串口帧校验（drivers/uart_link）；
  *   - config_crc16（app/proto 计算后存入 keystore）；
  *   - keystore 存储记录完整性（app/keystore）。

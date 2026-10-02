@@ -2,7 +2,7 @@
  * @file    battery.c
  * @brief   用内部 VREFINT 反推 VDD 的电量监测实现（寄存器直写）。
  *
- * 原理与限制见 battery.h 与 docs/hardware.md H5。
+ * 原理与限制见 battery.h。
  *
  * NOTE: ADC 时钟取 PCLK/2。本工程内核跑 MSI 2.097 MHz，PCLK/2 ≈ 1.05 MHz，
  *       低于 2.8 MHz，按手册必须置 LFMEN（低频率模式），否则转换结果不可信。
@@ -16,7 +16,7 @@
 #define VREFINT_CAL_ADDR     ((const uint16_t *)0x1FF80078U)
 #define VREFINT_CAL_VREF_MV  3000U
 
-/* 建议阈值，实机标定后修正 —— 见 battery.h 与 docs/requirements.md §4.1 */
+/* 出厂默认阈值；标定方法见 battery.h */
 #define BATTERY_THRESHOLD_LOW_MV       2400U
 #define BATTERY_THRESHOLD_CRITICAL_MV  2200U
 

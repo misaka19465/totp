@@ -2,7 +2,7 @@
  * @file    main.c
  * @brief   上电入口与低功耗主循环（唯一了解全局的模块）。
  *
- * 职责（docs/architecture.md §3/§4）：
+ * 职责：
  *   - 启动顺序：时钟/引脚 → 屏 → 电源档位 → RTC → 看门狗 → 串口链路 → 电量；
  *   - 空闲时进入 Stop（RTC 闹钟 + PA10 EXTI 唤醒），按三类期限调度：
  *     口令窗口边界（精确）、显示重写（2 s，极低电量时 1 s）、电量采集（10 min）；
@@ -10,7 +10,7 @@
  *   - 收集 keystore/RTC/电量/看门狗状态，交给 state_indicator 决定显示。
  *
  * NOTE: 屏由 HT1621B 自主驱动，MCU 睡觉不影响常亮；显示重写是为了缓解
- *       直流偏置累积（§4.3），不是保持内容所必需。
+ *       直流偏置累积，不是保持内容所必需。
  */
 #include <stdbool.h>
 #include <stdint.h>
@@ -29,11 +29,11 @@
 #include "uart_link.h"
 #include "watchdog.h"
 
-/* 显示重写间隔：1–2 s 的规格取上限，功耗减半（architecture.md §4.3/§4.4） */
+/* 显示重写间隔：1–2 s 的规格取上限，功耗减半 */
 #define MAIN_DISPLAY_REFRESH_MS   2000U
-/* 极低电量闪烁需要 1 Hz 相位翻转，刷新间隔必须到 1 s（requirements.md §4.1） */
+/* 极低电量闪烁需要 1 Hz 相位翻转，刷新间隔必须到 1 s */
 #define MAIN_BLINK_REFRESH_MS     1000U
-/* 电量采集间隔（architecture.md §4.4 闹钟 C） */
+/* 电量采集间隔 */
 #define MAIN_BATTERY_INTERVAL_MS  600000U
 
 /* ---- 运行时状态 ---- */
@@ -65,7 +65,7 @@ static void gpio_init(void)
 
     /* NOTE: 所有未连接引脚显式置为模拟输入（MODER = 11）。
      *       浮空输入会使输入级振荡漏电，而 MCU 侧功耗预算只有 1 µA；
-     *       见 docs/architecture.md §4.5 与 board_pins.h 的说明。
+     *       详见 board_pins.h 的说明。
      *       模拟态同时也是这些引脚复位后的默认值，此处只是写死以防误改。 */
     GPIOA->MODER |= PIN_ANALOG_MASK_GPIOA;
     RCC->IOPENR |= RCC_IOPENR_GPIOBEN;
@@ -207,7 +207,7 @@ static proto_status_t status_build(uint64_t now_ms)
 
 /**
  * @brief  处理一帧串口请求，并在配置/时间变化后立即刷新显示（NFR-3）。
- * @note   成功的 SET_TIME / WRITE_SLOT 同时清除故障锁存（requirements.md §4.0）。
+ * @note   成功的 SET_TIME / WRITE_SLOT 同时清除故障锁存。
  */
 static void serial_handle(uint64_t now_ms)
 {

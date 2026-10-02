@@ -28,20 +28,18 @@ venv/
 .pytest_cache/
 
 # --- 编辑器 / IDE ---
-# NOTE: .vscode/ 亦被用户的全局 gitignore(~/.gitignore_global) 排除，
-#       若需纳入仓库的 .vscode/settings.json，须用 git add -f。
 .vscode/
 .idea/
 *.swp
 *~
 .DS_Store
 
-# --- 本地临时/分析产物（原理图截图、反查结果等） ---
+# --- 本地临时/分析产物---
 .tmp*/
 tmp/
 tmp_*/
 
-# --- 设备本地状态：绝不该进仓库 ---
+# --- 设备本地状态 ---
 # NOTE: 含 TOTP 种子/对时状态，泄露即等同泄露第二因子
 *.seed
 *.secret

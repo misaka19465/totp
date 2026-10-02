@@ -2,7 +2,7 @@
  * @file    rtc_time.h
  * @brief   RTC 日历与 UTC 时间的纯换算（不访问寄存器，可主机侧测试）。
  *
- * 约定（与 STM32L0 RTC 及 docs/serial-protocol.md §5.4 对齐）：
+ * 约定（与 STM32L0 RTC 对齐）：
  *   - 日历为公历 UTC；RTC_DR 年字段是 00..99 的偏移，故仅支持 2000..2099；
  *   - 亚秒粒度 1/256 s（PREDIV_S = 255），本模块用"自整秒边界起的计数"
  *     表示亚秒：ticks = 255 - SSR，0..255 表示整秒内已过的 1/256 s；
@@ -91,7 +91,7 @@ int32_t rtc_time_ms_from_ticks(int32_t ticks);
 
 /**
  * @brief  0.01 ppm 校准请求 → 最接近的 CALP/CALM 档位。
- * @param  centi_ppm 请求修正量，范围 ±30000（±300 ppm，serial-protocol.md §5.8）。
+ * @param  centi_ppm 请求修正量，范围 ±30000（±300 ppm）。
  * @param  out       输出寄存器档位。
  * @return 合法返回 true；out 为空或超范围返回 false。
  * @note   档位为 0.9537 ppm 一步、覆盖 -487.4..+488.3 ppm；

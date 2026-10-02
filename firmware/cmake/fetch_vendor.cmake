@@ -1,7 +1,7 @@
 # 拉取并固定版本的外部依赖（CMSIS 器件头 + STM32L0 HAL 驱动）。
 #
 # NOTE: 依赖不进仓库（见 .gitignore 的 vendor 规则），首次配置时下载到 firmware/vendor/。
-#       版本号固定在下方，升级需同步更新 firmware/vendor/VERSIONS.md 并重新回归。
+#       版本号固定在下方，升级后需重新回归。
 cmake_minimum_required(VERSION 3.20)
 
 set(VENDOR_DIR "${CMAKE_CURRENT_LIST_DIR}/../vendor")
@@ -14,7 +14,7 @@ set(STM32L0_HAL_TAG  "v1.10.7")
 
 # CMSIS Core 只取 CMSIS_5 的 CMSIS/Core/Include 子目录：
 # 用 --filter=blob:none --sparse 避免下载整个仓库（其中绝大部分是 M0+ 用不到的器件支持）。
-# 该子目录没有独立标签，因此锁定到 commit，版本记录见 vendor/VERSIONS.md。
+# 该子目录没有独立标签，因此锁定到 commit。
 set(CMSIS5_CORE_REPO "https://github.com/ARM-software/CMSIS_5.git")
 set(CMSIS5_CORE_COMMIT "55b19837f5703e418ca37894d5745b1dc05e4c91")
 

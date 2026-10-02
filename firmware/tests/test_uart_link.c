@@ -2,8 +2,8 @@
  * @file    test_uart_link.c
  * @brief   uart_link 单元测试：CRC、组帧、解析/重同步、超时与会话状态机。
  *
- * 帧字节取自 docs/serial-protocol.md §8 的测试向量（由 tools/provision 的
- * Python 参考实现生成）；构造的超长/坏 CRC 帧用逐位 CRC 独立生成，
+ * 帧字节取自固定测试向量（由 tools/provision 的 Python 参考实现生成）；
+ * 构造的超长/坏 CRC 帧用逐位 CRC 独立生成，
  * 与实现的半字节表算法交叉校验。
  */
 #include "test_util.h"
@@ -13,7 +13,7 @@
 #include "fake_usart2_hw.h"
 #include "uart_link.h"
 
-/* ---- 规范 §8 测试向量 ---- */
+/* ---- 测试向量 ---- */
 static const uint8_t PING_REQ[]     = { 0xaa, 0x01, 0x00, 0x00, 0xac, 0xfb };
 static const uint8_t SET_TIME_REQ[] = {
     0xaa, 0x03, 0x2a, 0x08, 0x00, 0x20, 0xe9, 0xf9, 0xa0, 0x01, 0x00, 0x00, 0x86, 0xcf,
@@ -51,7 +51,7 @@ static uint16_t ref_crc16(const uint8_t *data, size_t len)
     return crc;
 }
 
-/** 按规范 §4.1 组一帧（含 CRC，小端），返回总字节数 */
+/** 按线格式组一帧（含 CRC，小端），返回总字节数 */
 static size_t build_frame(uint8_t *out, uint8_t cmd, uint8_t seq,
                           const uint8_t *payload, uint8_t len)
 {
@@ -121,7 +121,7 @@ void test_uart_link(void)
     CHECK_U32(frame.len, 0x00U);
     CHECK(uart_link_state() == UART_LINK_ACTIVE);
 
-    /* ---- PING 响应组帧与 §8 向量逐字节一致 ---- */
+    /* ---- PING 响应组帧与向量逐字节一致 ---- */
     fake_usart2_hw_clear_tx();
     CHECK(uart_link_send_response(&frame, 0x00U, PING_RESP_DATA, 10U));
     CHECK(fake_usart2_hw_sent_len() == 17U);

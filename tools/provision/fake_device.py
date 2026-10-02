@@ -1,4 +1,4 @@
-"""进程内设备仿真（仅测试用）：实现 serial-protocol.md §5 的命令语义。
+"""进程内设备仿真（仅测试用）：实现设备命令语义。
 
 NOTE: 行为以 firmware/src/app/proto.c 为准，只实现测试需要的命令与故障注入，
       不参与正式工具运行。
@@ -11,7 +11,7 @@ import struct
 import protocol
 
 PREAMBLE = b"\x00\x00\x00\x00"
-INITIAL_TIME_MS = 1790899200000  # 2026-10-02T00:00:00Z（规范 §8 向量时刻）
+INITIAL_TIME_MS = 1790899200000  # 2026-10-02T00:00:00Z
 NEVER_SYNCED_AGE_S = 0xFFFFFFFF
 SET_TIME_QUANTIZE_MS = 4  # 模拟 1/256 s 亚秒量化
 

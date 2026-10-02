@@ -24,7 +24,7 @@ void test_base32(void)
     expect_decode("MZXW6YTB", "666f6f6261");
     expect_decode("MZXW6YTBOI", "666f6f626172");
 
-    /* 协议示例种子（serial-protocol.md §8）：Hello!\xde\xad\xbe\xef */
+    /* 协议示例种子：Hello!\xde\xad\xbe\xef */
     expect_decode("JBSWY3DPEHPK3PXP", "48656c6c6f21deadbeef");
 
     /* 最小有效输入：2 字符 → 1 字节 */

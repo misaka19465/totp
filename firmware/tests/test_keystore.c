@@ -2,7 +2,7 @@
  * @file    test_keystore.c
  * @brief   keystore 单元测试：记录往返、幂等、参数校验、损坏检测与失败回滚。
  *
- * config_crc16 用 serial-protocol.md §5.7 的定义独立复算，并与 §8 的
+ * config_crc16 按协议定义独立复算，并与
  * 测试向量（JBSWY3DPEHPK3PXP / digits=6 → 0xB638，digits=4 → 0xDD5E）
  * 逐值对照，保证存储层与协议参考实现一致。
  */
@@ -18,7 +18,7 @@
 #define SEED_TEXT      "JBSWY3DPEHPK3PXP"
 #define SEED_TEXT_LEN  16U
 
-/** serial-protocol.md §5.7：CRC-16/CCITT-FALSE(algo||digits||period_le||len||ascii) */
+/** CRC-16/CCITT-FALSE(algo||digits||period_le||len||ascii) */
 static uint16_t spec_config_crc(uint8_t algo, uint8_t digits, uint16_t period,
                                 const char *secret, uint8_t secret_len)
 {
@@ -70,7 +70,7 @@ void test_keystore(void)
     CHECK(keystore_erase());
     CHECK(!keystore_present());
 
-    /* ---- CRC 与规范 §8 向量一致 ---- */
+    /* ---- CRC 与测试向量一致 ---- */
     CHECK_U32(spec_config_crc(1U, 6U, 30U, SEED_TEXT, SEED_TEXT_LEN), 0xB638U);
     CHECK_U32(spec_config_crc(1U, 4U, 30U, SEED_TEXT, SEED_TEXT_LEN), 0xDD5EU);
 

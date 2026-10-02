@@ -1,7 +1,7 @@
 """provision 工具与设备交互的异常类型。
 
 NOTE: 所有异常都是"预期内的失败"，CLI 捕获后打印消息并以非零退出；
-      只有未知状态码也要按失败处理并打印原始值（serial-protocol.md §5.9）。
+      只有未知状态码也要按失败处理并打印原始值。
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ class ProvisionError(Exception):
 
 
 class DeviceError(ProvisionError):
-    """设备回了非 OK 状态码（serial-protocol.md §5.9）。"""
+    """设备回了非 OK 状态码。"""
 
     def __init__(self, cmd: int, status: int) -> None:
         super().__init__(f"设备返回 {protocol.status_name(status)}（命令 0x{cmd:02X}）")

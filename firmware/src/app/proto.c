@@ -1,6 +1,6 @@
 /**
  * @file    proto.c
- * @brief   耳机口协议命令层实现（serial-protocol.md §5）。
+ * @brief   耳机口协议命令层实现。
  */
 #include "proto.h"
 
@@ -11,7 +11,7 @@
 #include "crc16.h"
 #include "keystore.h"
 
-/* ---- 小端字段读写（§2.2：所有多字节字段小端） ---- */
+/* ---- 小端字段读写（所有多字节字段小端） ---- */
 
 static uint16_t get_u16(const uint8_t *p)
 {
@@ -49,7 +49,7 @@ static void put_u64(uint8_t *p, uint64_t value)
 
 /* ---- 状态快照与标志组装 ---- */
 
-/** 电量档位 → 线上取值（§5.5：0=未知，1=正常，2=低电，3=极低） */
+/** 电量档位 → 线上取值（0=未知，1=正常，2=低电，3=极低） */
 static uint8_t battery_level_wire(battery_level_t level)
 {
     switch (level) {
@@ -61,7 +61,7 @@ static uint8_t battery_level_wire(battery_level_t level)
     return 0U;      /* 不可达；仅为满足穷尽返回 */
 }
 
-/** 组装 PING/GET_STATUS 共用的 flags（§5.10） */
+/** 组装 PING/GET_STATUS 共用的 flags */
 static uint16_t device_flags(const proto_status_t *status)
 {
     uint16_t flags = 0U;
@@ -100,7 +100,7 @@ static uint16_t device_flags(const proto_status_t *status)
 
 /** 发送仅带状态码的响应（长度为 0 时 data 可为 NULL） */
 /* NOTE: 结果码经文件级变量回传给 proto_handle_request 的 result_out：
- *       协议是严格的单请求串行模型（§4.5），不存在并发/reentrancy。 */
+ *       协议是严格的单请求串行模型，不存在并发/reentrancy。 */
 static proto_result_t s_last_result = PROTO_ERR_INTERNAL;
 
 static bool respond(const uart_link_frame_t *request, proto_result_t result,
@@ -112,7 +112,7 @@ static bool respond(const uart_link_frame_t *request, proto_result_t result,
 
 /* ---- 各命令处理 ---- */
 
-/** PING（§5.2）：连通性与版本握手，无载荷 */
+/** PING：连通性与版本握手，无载荷 */
 static bool handle_ping(const uart_link_frame_t *request, const proto_status_t *status)
 {
     if (request->len != 0U) {
@@ -128,7 +128,7 @@ static bool handle_ping(const uart_link_frame_t *request, const proto_status_t *
     return respond(request, PROTO_OK, data, (uint8_t)sizeof data);
 }
 
-/** GET_TIME（§5.3）：当前 UTC 毫秒与可信标志 */
+/** GET_TIME：当前 UTC 毫秒与可信标志 */
 static bool handle_get_time(const uart_link_frame_t *request)
 {
     if (request->len != 0U) {
@@ -141,7 +141,7 @@ static bool handle_get_time(const uart_link_frame_t *request)
     return respond(request, PROTO_OK, data, (uint8_t)sizeof data);
 }
 
-/** SET_TIME（§5.4）：写 UTC 毫秒并回读确认 */
+/** SET_TIME：写 UTC 毫秒并回读确认 */
 static bool handle_set_time(const uart_link_frame_t *request)
 {
     if (request->len != 8U) {
@@ -163,7 +163,7 @@ static bool handle_set_time(const uart_link_frame_t *request)
     return respond(request, PROTO_OK, data, (uint8_t)sizeof data);
 }
 
-/** GET_STATUS（§5.5）：状态全量快照 */
+/** GET_STATUS：状态全量快照 */
 static bool handle_get_status(const uart_link_frame_t *request,
                               const proto_status_t *status)
 {
@@ -180,7 +180,7 @@ static bool handle_get_status(const uart_link_frame_t *request,
     return respond(request, PROTO_OK, data, (uint8_t)sizeof data);
 }
 
-/** WRITE_SLOT（§5.6）：校验 → 解码 → 落盘（含读回比对） */
+/** WRITE_SLOT：校验 → 解码 → 落盘（含读回比对） */
 static bool handle_write_slot(const uart_link_frame_t *request)
 {
     const uint8_t *payload = request->payload;
@@ -231,7 +231,7 @@ static bool handle_write_slot(const uart_link_frame_t *request)
     return respond(request, PROTO_OK, data, (uint8_t)sizeof data);
 }
 
-/** READ_META（§5.7）：配置元信息与 config_crc16，不回显种子 */
+/** READ_META：配置元信息与 config_crc16，不回显种子 */
 static bool handle_read_meta(const uart_link_frame_t *request)
 {
     if (request->len != 0U) {
@@ -251,7 +251,7 @@ static bool handle_read_meta(const uart_link_frame_t *request)
     return respond(request, PROTO_OK, data, (uint8_t)sizeof data);
 }
 
-/** ERASE_SLOT（§5.8）：使配置记录失效 */
+/** ERASE_SLOT：使配置记录失效 */
 static bool handle_erase_slot(const uart_link_frame_t *request)
 {
     if (request->len != 0U) {
@@ -263,7 +263,7 @@ static bool handle_erase_slot(const uart_link_frame_t *request)
     return respond(request, PROTO_OK, NULL, 0U);
 }
 
-/** SET_CALIB（§5.8）：写 RTC 数字校准并回读实际生效值 */
+/** SET_CALIB：写 RTC 数字校准并回读实际生效值 */
 static bool handle_set_calib(const uart_link_frame_t *request)
 {
     if (request->len != 2U) {

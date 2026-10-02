@@ -2,10 +2,10 @@
  * @file    base32.h
  * @brief   Base32 种子解码（RFC 4648，无填充）。
  *
- * 规则与 docs/serial-protocol.md §5.6 的 WRITE_SLOT.secret 一致：
+ * 规则与 WRITE_SLOT.secret 一致：
  *   仅接受 A-Z 与 2-7，**无填充、无小写、无空白**，字符数 1..56。
  *
- * NOTE: 本模块只解码、不编码 —— 协议不提供种子读出（serial-protocol.md §9），
+ * NOTE: 本模块只解码、不编码 —— 协议不提供种子读出，
  *       设备永远不需要把种子还原成文本。
  */
 #ifndef BASE32_H
@@ -14,7 +14,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/** 种子字符数上限（56 字符 → 35 字节，serial-protocol.md §5.6） */
+/** 种子字符数上限（56 字符 → 35 字节） */
 #define BASE32_MAX_CHARS  56U
 /** 种子解码后的字节数上限 */
 #define BASE32_MAX_BYTES  35U

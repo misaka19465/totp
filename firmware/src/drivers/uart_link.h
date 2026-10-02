@@ -2,11 +2,11 @@
  * @file    uart_link.h
  * @brief   耳机口串口链路层：帧编解码、CRC、重同步与会话状态机。
  *
- * 规范：docs/serial-protocol.md §2~§4。本层只认帧，不解释命令语义
+ * 本层只认帧，不解释命令语义
  * （命令分派属 app/proto）；对 CRC 合法但 PAYLOAD > 64 的帧，
- * 按 §4.4 自动回单字节 ERR_LEN，不向上传递。
+ * 自动回单字节 ERR_LEN，不向上传递。
  *
- * 链路状态机（§3.1）：
+ * 链路状态机：
  *   SLEEP  —— USART/HSI16 关闭，PA10 下降沿 EXTI 等待唤醒；
  *   WAKE   —— 收到边沿后打开 USART，300 ms 内未收到 SOF 则回 SLEEP；
  *   ACTIVE —— 每次收到 CRC 合法帧刷新 10 s 会话定时，超时回 SLEEP。
@@ -22,20 +22,20 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/** 协议允许的最大 PAYLOAD（serial-protocol.md §4.2） */
+/** 协议允许的最大 PAYLOAD */
 #define UART_LINK_MAX_PAYLOAD        64U
-/** 唤醒后等待 SOF 的窗口（§3.1 T_wake） */
+/** 唤醒后等待 SOF 的窗口（T_wake） */
 #define UART_LINK_WAKE_WINDOW_MS     300U
-/** 自 SOF 起收完整帧的期限（§4.4 T_frame_rx） */
+/** 自 SOF 起收完整帧的期限（T_frame_rx） */
 #define UART_LINK_FRAME_TIMEOUT_MS   100U
-/** 最后一个合法帧之后的会话保持时间（§3.1 T_session） */
+/** 最后一个合法帧之后的会话保持时间（T_session） */
 #define UART_LINK_SESSION_TIMEOUT_MS 10000U
 
-/** 帧 SOF 与响应位（serial-protocol.md §4.1/§4.2） */
+/** 帧 SOF 与响应位 */
 #define UART_LINK_SOF                0xAAU
 #define UART_LINK_RESPONSE_BIT       0x80U
 
-/** 链路状态（与 §3.1 状态机一致） */
+/** 链路状态 */
 typedef enum {
     UART_LINK_SLEEP = 0,
     UART_LINK_WAKE,
@@ -92,7 +92,7 @@ bool uart_link_poll(uint32_t now_ms, uart_link_frame_t *frame_out);
 bool uart_link_send(uint8_t cmd, uint8_t seq, const uint8_t *payload, uint8_t len);
 
 /**
- * @brief  按 §4.5 组响应帧：CMD|0x80、SEQ 回显、PAYLOAD = [status] + data。
+ * @brief  组响应帧：CMD|0x80、SEQ 回显、PAYLOAD = [status] + data。
  * @return 发送成功返回 true；request 为 NULL、data_len > 63 或链路休眠返回 false。
  */
 bool uart_link_send_response(const uart_link_frame_t *request, uint8_t status,

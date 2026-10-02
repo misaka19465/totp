@@ -1,4 +1,4 @@
-"""耳机口串口会话：前导码、帧收发、会话恢复（serial-protocol.md §3、§7）。
+"""耳机口串口会话：前导码、帧收发、会话恢复。
 
 NOTE: 线格式定义在 protocol.py；本模块只负责把一帧送达设备并取回响应，
       不做任何命令语义校验。
@@ -69,7 +69,7 @@ class SerialSession:
         self._port.close()
 
     def next_seq(self) -> int:
-        """规范 §4.2：上位机自增（mod 256），重传保持同一 SEQ。"""
+        """上位机自增（mod 256），重传保持同一 SEQ。"""
         seq = self._seq
         self._seq = (self._seq + 1) & 0xFF
         return seq
@@ -79,7 +79,7 @@ class SerialSession:
             self._trace(message)
 
     def _preamble(self) -> None:
-        """规范 §3.2：4 B 前导码 + ≥20 ms 静默。"""
+        """4 B 前导码 + ≥20 ms 静默。"""
         self._log(f"发送唤醒前导码（{PREAMBLE.hex(' ')}）+ {PREAMBLE_SILENCE_S * 1000:.0f} ms 静默")
         self._port.reset_input_buffer()
         self._port.write(PREAMBLE)
@@ -87,7 +87,7 @@ class SerialSession:
         self._last_activity = None
 
     def _exchange(self, frame: protocol.Frame, timeout_s: float) -> tuple[int, bytes] | None:
-        """发送一帧并等待匹配响应；超时返回 None（规范 §4.5/§7）。"""
+        """发送一帧并等待匹配响应；超时返回 None。"""
         wire = protocol.encode(frame)
         self._log(f"发送：{wire.hex(' ')}")
         self._port.reset_input_buffer()
@@ -114,7 +114,7 @@ class SerialSession:
                 time.sleep(POLL_INTERVAL_S)
 
     def wake(self, *, rounds: int | None = None, attempts: int | None = None) -> tuple[int, bytes] | None:
-        """规范 §3.2 的会话建立：前导码 + PING，最多 rounds 轮、每轮 attempts 次。"""
+        """会话建立：前导码 + PING，最多 rounds 轮、每轮 attempts 次。"""
         rounds = WAKE_ROUNDS if rounds is None else rounds
         attempts = RETRIES if attempts is None else attempts
         ping = protocol.ping(self.next_seq())
@@ -127,7 +127,7 @@ class SerialSession:
         return None
 
     def request(self, frame: protocol.Frame, *, storage: bool = False) -> tuple[int, bytes]:
-        """发送命令并取响应；重传 3 次，仍失败则重建会话后再试（规范 §7）。"""
+        """发送命令并取响应；重传 3 次，仍失败则重建会话后再试。"""
         timeout_s = TIMEOUT_STORAGE_S if storage else TIMEOUT_FAST_S
         if self._last_activity is None or time.monotonic() - self._last_activity > IDLE_REPREAMBLE_S:
             self._preamble()

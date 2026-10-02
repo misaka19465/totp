@@ -40,7 +40,7 @@
 #define CLOCK_RTC_ALARM_EXTI_LINE    (1UL << 17)
 
 /* RTC_PRER：PREDIV_A = 127，PREDIV_S = 255 → 32768/(127+1)/256 = 1 Hz，
- * 亚秒分辨率 1/256 s（serial-protocol.md §5.4 的量化粒度） */
+ * 亚秒分辨率 1/256 s（量化粒度） */
 #define CLOCK_RTC_PREDIV_A 127U
 #define CLOCK_RTC_PREDIV_S 255U
 
@@ -50,7 +50,7 @@ static bool s_rtc_ready;
 
 /* NOTE: 初始化与对时都是低频前台操作，用 SysTick 做毫秒级有限等待即可，
  *       不引入独立时基。轮询时 CPU 空转，最长一次是 LSE 冷启动（~1 s），
- *       折合电池消耗 <0.001 mAh，相对 CR2032 可忽略（architecture.md §4.1）。 */
+ *       折合电池消耗 <0.001 mAh，相对 CR2032 可忽略。 */
 static void systick_start_ms(void)
 {
     uint32_t reload = SystemCoreClock / 1000U;
@@ -109,7 +109,7 @@ static bool wait_mask_clear(volatile uint32_t *reg, uint32_t mask, uint32_t time
 
 /* NOTE: RCC_CSR 的 bit23（RMVF）与 bit25..31（复位原因标志）是"写 0 无副作用"
  *       的位。读-改-写必须把它们写成 0，否则会误清 POR/IWDG 等复位原因
- *       （DOT5 故障锁存依赖 IWDGRSTF，见 architecture.md §3.1）。 */
+ *       （DOT5 故障锁存依赖 IWDGRSTF）。 */
 #define CLOCK_RTC_RCC_CSR_PRESERVE_MASK 0x007FFFFFU
 
 static void rcc_csr_update(uint32_t set_bits, uint32_t clear_bits)
@@ -540,10 +540,9 @@ bool clock_rtc_alarm_set(uint64_t unix_ms)
     rtc_lock();
 
     EXTI->PR = CLOCK_RTC_ALARM_EXTI_LINE;   /* 清残留挂起，避免假唤醒 */
-    /* NOTE: 实机教训（2026-10-02，首板）：RTC 闹钟在 EXTI 线 17 上按
-     *       上升沿触发（RM0367 §13.3.2/§13.4.2），只开 IMR 不配 RTSR 时
-     *       Stop 下闹钟永远不会把 MCU 唤醒，表现为空闲约 4 s 后被 IWDG
-     *       反复复位（FAULT_LATCHED + 复位原因 IWDG）。 */
+    /* NOTE: RTC 闹钟在 EXTI 线 17 上按上升沿触发（RM0367 §13.3.2/§13.4.2），
+     *       RTSR 与 IMR 必须同时配置：只开 IMR 时 Stop 下闹钟不会唤醒 MCU，
+     *       设备空闲约 4 s 后被 IWDG 反复复位（FAULT_LATCHED + 复位原因 IWDG）。 */
     EXTI->RTSR |= CLOCK_RTC_ALARM_EXTI_LINE;
     EXTI->IMR |= CLOCK_RTC_ALARM_EXTI_LINE;
     NVIC_EnableIRQ(RTC_IRQn);

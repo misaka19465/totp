@@ -1,7 +1,7 @@
 """protocol.py 的线格式回归测试。
 
-NOTE: 测试向量与 docs/serial-protocol.md §8 一一对应；改动协议必须先改规范，
-      再同步本文件，避免固件、上位机与文档三者漂移。
+NOTE: 测试向量固定线格式；改动协议必须同步更新本文件与固件测试，
+      避免固件与上位机漂移。
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ class CrcTests(unittest.TestCase):
 
 
 class VectorTests(unittest.TestCase):
-    """规范 §8 的逐字节向量。"""
+    """逐字节线格式向量。"""
 
     def assert_frame(self, frame: p.Frame, expected_hex: str) -> None:
         self.assertEqual(p.encode(frame).hex(" "), " ".join(expected_hex.split()))

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""打卡点动态码牌配置工具（docs/serial-protocol.md §6 的命令行实现）。
+"""打卡点动态码牌配置工具。
 
 用法示例：
   provision.py -p /dev/ttyUSB0 ping
@@ -95,7 +95,7 @@ def _connect(device: Device) -> DeviceInfo:
 
 
 def _assert_meta_matches(meta: Meta, *, secret: str, digits: int, period: int) -> None:
-    """规范 §6 第 4 步：READ_META 的字段与 config_crc16 必须与写入一致。"""
+    """写后核对：READ_META 的字段与 config_crc16 必须与写入一致。"""
     expected_crc = protocol.config_crc16(
         algo=protocol.ALGO_SHA1, digits=digits, period=period, secret=secret
     )
@@ -244,7 +244,7 @@ def _cmd_set_calib(device: Device, args: argparse.Namespace) -> int:
 
 
 def _cmd_verify(device: Device, args: argparse.Namespace) -> int:
-    """规范 §6 的完整配置流程。"""
+    """完整的配置流程。"""
     info = _connect(device)
     print(f"[1/5] 握手：OK（协议 v{info.proto_ver}，固件 {info.fw_version}）")
 

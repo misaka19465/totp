@@ -37,7 +37,7 @@ set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-Wl,--gc-sections")
 #       否则每次升级厂商包都要重新适配一遍无关告警。
 set(TOTP_STRICT_WARNINGS -Wall -Wextra -Wshadow -Wundef -Wdouble-promotion -Wswitch-enum)
 
-# 首次配置时自动拉取锁定版本的三方依赖（版本表见 vendor/VERSIONS.md）
+# 首次配置时自动拉取锁定版本的三方依赖
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/fetch_vendor.cmake)
 
 set(VENDOR_DIR        ${CMAKE_CURRENT_SOURCE_DIR}/vendor)

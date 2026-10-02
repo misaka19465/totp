@@ -2,7 +2,6 @@
 
 NOTE: 本模块只做帧与命令编解码，不做串口 I/O 与会话管理，
       便于固件移植、上位机工具与测试共用同一份线格式定义。
-      规范：docs/serial-protocol.md
 """
 
 from __future__ import annotations
@@ -105,7 +104,7 @@ def crc16_ccitt_false(data: bytes) -> int:
 
 
 def encode(frame: Frame) -> bytes:
-    """帧 → 线字节。PAYLOAD 超过 MAX_PAYLOAD 时拒绝（规范 §4.2）。"""
+    """帧 → 线字节。PAYLOAD 超过 MAX_PAYLOAD 时拒绝。"""
     if len(frame.payload) > MAX_PAYLOAD:
         raise ValueError(f"payload {len(frame.payload)} B 超过协议上限 {MAX_PAYLOAD} B")
     body = bytes([frame.cmd, frame.seq, len(frame.payload)]) + frame.payload
@@ -116,7 +115,7 @@ def encode(frame: Frame) -> bytes:
 class FrameDecoder:
     """增量帧解码器。
 
-    NOTE: CRC 错误的帧按规范 §4.4 静默丢弃并计入 dropped；收到部分帧后若
+    NOTE: CRC 错误的帧静默丢弃并计入 dropped；收到部分帧后若
           超过 T_frame_rx，调用方必须调用 reset() 丢弃残帧。
     """
 
@@ -155,7 +154,7 @@ class FrameDecoder:
         return frames
 
     def reset(self) -> None:
-        """帧内超时后清空残帧（规范 §4.4 的 T_frame_rx = 100 ms）。"""
+        """帧内超时后清空残帧（T_frame_rx = 100 ms）。"""
         if self._buf:
             self.dropped += len(self._buf)
             self._buf.clear()
@@ -198,7 +197,7 @@ def get_time(seq: int = 0) -> Frame:
 
 
 def set_time(seq: int = 0, *, unix_ms: int) -> Frame:
-    """SET_TIME（规范 §5.4）：载荷为 UTC Unix 毫秒时间戳（u64 小端）。"""
+    """SET_TIME：载荷为 UTC Unix 毫秒时间戳（u64 小端）。"""
     return Frame(Cmd.SET_TIME, seq, _pack_u64(unix_ms))
 
 
@@ -247,6 +246,6 @@ def set_calib(seq: int = 0, *, cal_centi_ppm: int) -> Frame:
 
 
 def config_crc16(*, algo: int, digits: int, period: int, secret: str) -> int:
-    """规范 §5.7 的 config_crc16，须与设备存储记录保持一致。"""
+    """计算 config_crc16，须与设备存储记录保持一致。"""
     blob = bytes([algo, digits]) + struct.pack("<H", period) + bytes([len(secret)]) + secret.encode("ascii")
     return crc16_ccitt_false(blob)

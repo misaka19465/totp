@@ -19,7 +19,7 @@ ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
 def normalize_secret(raw: str) -> str:
     """清理用户输入：去空白、去填充、转大写，并校验字母表与规范尾部位。
 
-    NOTE: 设备要求大写、无填充的规范 Base32（serial-protocol.md §5.6），
+    NOTE: 设备要求大写、无填充的规范 Base32，
           这里替操作员做等价改写，避免从密码管理器粘贴时带空格或 "="。
     """
     text = "".join(raw.split()).rstrip("=").upper()

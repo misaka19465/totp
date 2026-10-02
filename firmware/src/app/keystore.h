@@ -3,17 +3,17 @@
  * @brief   单槽点位配置的持久化存储（数据 EEPROM，断电不丢）。
  *
  * 记录内容 = TOTP 参数（algo/digits/period）+ 解码后的种子 + Base32 字符数
- * + config_crc16。存储格式与协议无关，字段约束来自 docs/serial-protocol.md §5.6：
+ * + config_crc16。存储格式与协议无关，字段约束如下：
  *   algo = 1（HMAC-SHA1）、digits 1..6、period 15..300 s、
  *   Base32 种子 1..56 字符（解码后 ≤35 字节）。
  *
- * NOTE: READ_META 的 secret_len 按规范 §5.7 是 **Base32 字符数**，而字符数
+ * NOTE: READ_META 的 secret_len 是 **Base32 字符数**，而字符数
  *       并不能从解码字节数反推（同一字节串可能有多种合法字符数写法），
  *       因此记录必须原样保存写入时的字符数 secret_chars。
  *
  * 记录完整性由独立于 config_crc16 的 CRC 保护（同一 CRC-16/CCITT-FALSE）：
  *   config_crc16 是**上位机可见的配置指纹**，覆盖 ASCII 种子，由 proto 层
- *   计算后传入并存回（READ_META 原样返回，见 serial-protocol.md §5.7）；
+ *   计算后传入并存回（READ_META 原样返回）；
  *   keystore 无法、也不应从解码后的字节复算它。
  *
  * 失效语义：magic/版本/记录 CRC/字段范围任一不符都视为"未写入种子"，
@@ -33,7 +33,7 @@
 /** 记录占用的字节数，必须能被 NVM_WORD_BYTES 整除 */
 #define KEYSTORE_RECORD_BYTES  (KEYSTORE_RECORD_WORDS * NVM_WORD_BYTES)
 
-/** 支持的算法（serial-protocol.md §5.6：目前仅 HMAC-SHA1） */
+/** 支持的算法（目前仅 HMAC-SHA1） */
 #define KEYSTORE_ALGO_SHA1        1U
 /** 口令位数范围（本设备 6 位段码屏） */
 #define KEYSTORE_DIGITS_MIN       1U
@@ -41,7 +41,7 @@
 /** TOTP 步长范围（秒） */
 #define KEYSTORE_PERIOD_MIN_S     15U
 #define KEYSTORE_PERIOD_MAX_S     300U
-/** Base32 种子字符数范围（serial-protocol.md §5.6） */
+/** Base32 种子字符数范围 */
 #define KEYSTORE_SECRET_CHARS_MIN 1U
 #define KEYSTORE_SECRET_CHARS_MAX 56U
 /** 解码后的种子字节数上限（56 Base32 字符 → 35 字节） */
@@ -76,9 +76,9 @@ bool keystore_present(void);
  * @param  cfg 待写入配置；字段越界返回 false 且不改动 EEPROM。
  * @return 落盘并读回一致返回 true；否则记录被擦除（不留半份配置）并返回 false。
  * @note   与现有记录完全相同时跳过物理写入直接返回 true，重传不产生磨损。
- *         config_crc16 由调用方（proto）按 serial-protocol.md §5.7 计算。
+ *         config_crc16 由调用方（proto）计算。
  *         最坏耗时 = 13 字擦除 + 13 字写入 ≈ 26 × 3.3 ms < 100 ms，
- *         在协议 §7 的存储命令 200 ms 响应期限内。
+ *         在存储命令 200 ms 响应期限内。
  */
 bool keystore_write(const keystore_config_t *cfg);
 

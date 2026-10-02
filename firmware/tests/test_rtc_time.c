@@ -2,7 +2,7 @@
  * @file    test_rtc_time.c
  * @brief   rtc_time 单元测试：UTC↔日历换算、BCD、1/256 s 量化与校准折算。
  *
- * 时间向量用 serial-protocol.md §8 的 2026-10-02T00:00:00Z（= 1790899200000 ms）
+ * 时间向量用 2026-10-02T00:00:00Z（= 1790899200000 ms）
  * 与 2000-02-29（闰日）等边界逐值对照；另用 2000..2099 全时段逐日往返
  * 覆盖闰年与月长逻辑。
  */
@@ -57,7 +57,7 @@ static void test_unix_vectors(void)
     CHECK(rtc_time_from_unix(951782400ULL, &civil));
     CHECK(civil_is(&civil, 2000U, 2U, 29U, 2U, 0U, 0U, 0U));
 
-    /* serial-protocol.md §8 的对时向量：2026-10-02T00:00:00Z */
+    /* 对时向量：2026-10-02T00:00:00Z */
     CHECK(rtc_time_from_unix(1790899200ULL, &civil));
     CHECK(civil_is(&civil, 2026U, 10U, 2U, 5U, 0U, 0U, 0U));
     CHECK(rtc_time_to_unix(&civil, &unix_s) && unix_s == 1790899200ULL);

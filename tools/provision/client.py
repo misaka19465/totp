@@ -1,4 +1,4 @@
-"""设备命令层：字段校验、类型化封装与写后读回确认（serial-protocol.md §5）。
+"""设备命令层：字段校验、类型化封装与写后读回确认。
 
 NOTE: 本层把帧级会话（session.py）包装成有类型、有长度校验的命令调用；
       所有"设备回了什么才算成功"的判断都在这里，CLI 只负责展示与流程编排。
@@ -28,9 +28,8 @@ RECORD_VALID_BIT = 1 << 1
 NEVER_SYNCED_AGE_S = 0xFFFFFFFF
 
 # NOTE: 实机实测（2026-10-02，L031 实物）SET_TIME 立即回读偏大 10~20 ms，
-#       稳定后偏差为负（单向链路时延量级）；对 30 s 的 TOTP 窗口余量足够，
-#       精度要求与实测数据见 serial-protocol.md §5.4。容差取值与固件内部
-#       CLOCK_RTC_SET_TOLERANCE_MS 一致。
+#       稳定后偏差为负（单向链路时延量级）；对 30 s 的 TOTP 窗口余量足够。
+#       容差取值与固件内部 CLOCK_RTC_SET_TOLERANCE_MS 一致。
 TIME_SYNC_TOLERANCE_MS = 100
 TIME_SYNC_ATTEMPTS = 3
 
@@ -53,7 +52,7 @@ def _i16(data: bytes) -> int:
 
 @dataclasses.dataclass(frozen=True)
 class DeviceInfo:
-    """PING 响应（规范 §5.2）。"""
+    """PING 响应。"""
 
     proto_ver: int
     fw_major: int
@@ -73,7 +72,7 @@ class DeviceInfo:
 
 @dataclasses.dataclass(frozen=True)
 class TimeReading:
-    """GET_TIME / SET_TIME 回读（规范 §5.3/§5.4）。"""
+    """GET_TIME / SET_TIME 回读。"""
 
     unix_ms: int
     flags: int
@@ -85,7 +84,7 @@ class TimeReading:
 
 @dataclasses.dataclass(frozen=True)
 class StatusSnapshot:
-    """GET_STATUS 响应（规范 §5.5）。"""
+    """GET_STATUS 响应。"""
 
     flags: int
     reset_cause: int
@@ -100,7 +99,7 @@ class StatusSnapshot:
 
 @dataclasses.dataclass(frozen=True)
 class Meta:
-    """READ_META 响应（规范 §5.7）。"""
+    """READ_META 响应。"""
 
     flags: int
     algo: int
@@ -119,7 +118,7 @@ class Meta:
 
 
 def check_compatible(info: DeviceInfo) -> None:
-    """规范 §5.2：proto_ver == 1 且 max_payload ≥ 61，否则拒绝继续。"""
+    """proto_ver == 1 且 max_payload ≥ 61，否则拒绝继续。"""
     if info.proto_ver != protocol.PROTO_VERSION:
         raise ProtocolError(
             f"设备协议版本为 v{info.proto_ver}，本工具只支持 v{protocol.PROTO_VERSION}"
@@ -199,7 +198,7 @@ class Device:
         return TimeReading(unix_ms=_u64(data), flags=data[8])
 
     def set_time(self, *, max_attempts: int | None = None) -> tuple[int, int]:
-        """发送前采样 UTC 毫秒并回读确认（规范 §5.4，容差 ±100 ms）。
+        """发送前采样 UTC 毫秒并回读确认（容差 ±100 ms）。
 
         NOTE: 每次重试都重新采样时间；重传旧时间戳只会把设备时间写回过去。
         """
@@ -237,7 +236,7 @@ class Device:
         digits: int = protocol.DIGITS_MAX,
         period: int = 30,
     ) -> int:
-        """写种子并对响应里的 config_crc16 做本地复算比对（规范 §5.6）。"""
+        """写种子并对响应里的 config_crc16 做本地复算比对。"""
         secret = totp.normalize_secret(secret)
         expected_crc = protocol.config_crc16(
             algo=protocol.ALGO_SHA1, digits=digits, period=period, secret=secret

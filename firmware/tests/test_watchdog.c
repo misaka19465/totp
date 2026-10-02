@@ -1,6 +1,6 @@
 /**
  * @file    test_watchdog.c
- * @brief   watchdog 纯逻辑测试：复位原因标志的优先级归并（§5.5 线上语义）。
+ * @brief   watchdog 纯逻辑测试：复位原因标志的优先级归并（线上语义）。
  */
 #include "test_util.h"
 

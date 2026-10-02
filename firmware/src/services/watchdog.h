@@ -2,10 +2,10 @@
  * @file    watchdog.h
  * @brief   IWDG 看门狗与故障锁存（无按键设备唯一的自恢复手段）。
  *
- * 设计依据 docs/architecture.md §7：IWDG 由 LSI 驱动、Stop 下继续计数，
+ * 设计要点：IWDG 由 LSI 驱动、Stop 下继续计数，
  * 4 s 超时先作实测起点；一次完整唤醒周期在数 ms 量级，余量充足。
  *
- * 故障锁存语义（requirements.md §4.0）：
+ * 故障锁存语义：
  *   - IWDG 复位（RCC_CSR.IWDGRSTF）或主循环自检失败 → 锁存故障；
  *   - 锁存值存于 RTC 备份寄存器 BKP2R（VDD 在即保留，换电池即清），
  *     因此能在 IWDG 复位后继续显示 DOT5 与空数字位；
@@ -22,7 +22,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* NOTE: 取值与 serial-protocol.md §5.5 的 reset_cause 线上口径一致，
+/* NOTE: 取值与 reset_cause 线上口径一致，
  *       主循环直接转换后填入 proto_status_t，无需再次映射。 */
 typedef enum {
     WATCHDOG_RESET_POR      = 0, /**< 上电/欠压复位（POR/BOR） */
@@ -71,7 +71,7 @@ void watchdog_init(void);
  * @brief  启动 IWDG（LSI，约 4 s 超时；重复调用无副作用）。
  * @note   启动后不可关闭。主循环只在 RTC 走时可用时启动：RTC 不可用时
  *         唯一唤醒源是插头 EXTI，无限期 Stop 会周期性触发 IWDG 复位，
- *         形成复位循环（该降级路径的取舍见 architecture.md §7.4）。
+ *         形成复位循环（该降级路径是有意接受的取舍）。
  *         此外启动必须排在 clock_rtc_init() 之后：LSE 冷启动最长等待
  *         3 s，可能超过 IWDG 最坏超时（2.6 s）。
  */

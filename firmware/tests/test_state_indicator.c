@@ -1,6 +1,6 @@
 /**
  * @file    test_state_indicator.c
- * @brief   state_indicator 单元测试：状态点语义与并发规则（requirements §4）。
+ * @brief   state_indicator 单元测试：状态点语义与并发规则。
  */
 #include "test_util.h"
 
@@ -64,7 +64,7 @@ void test_state_indicator(void)
         make(true, CLOCK_RTC_TIME_TRUSTED, BATTERY_LEVEL_UNKNOWN, false);
     CHECK_U32(state_indicator_dot_mask(&unknown, 0U), 0U);
 
-    /* 故障：DOT5 亮、数字位清空；其余状态点照常（§4.0 并发规则） */
+    /* 故障：DOT5 亮、数字位清空；其余状态点照常（并发规则） */
     const state_indicator_state_t fault =
         make(true, CLOCK_RTC_TIME_TRUSTED, BATTERY_LEVEL_NORMAL, true);
     CHECK_U32(state_indicator_dot_mask(&fault, 0U), LCD_DOT_FAULT);

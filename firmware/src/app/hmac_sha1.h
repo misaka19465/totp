@@ -2,7 +2,7 @@
  * @file    hmac_sha1.h
  * @brief   HMAC-SHA1（RFC 2104 + FIPS 180-1），TOTP 的唯一哈希原语。
  *
- * NOTE: 这是产品功能的核心计算，但不承担安全职责（requirements.md §1）：
+ * NOTE: 这是产品功能的核心计算，但不承担安全职责：
  *       选 SHA-1 是因为 TOTP/RFC 6238 的默认算法是它，校验端工具链成熟。
  */
 #ifndef HMAC_SHA1_H

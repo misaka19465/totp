@@ -52,7 +52,7 @@
 #define HT1621_SEG_COUNT       12U  /* 本板实际引出 SEG0..SEG5 + SEG13..SEG18 */
 #define HT1621_ADDR_MAX        32U  /* 器件完整显示 RAM 地址空间 0x00..0x1F   */
 
-/* ---- 本板显示 RAM 地址（与 docs/hardware.md 映射表一一对应）---- */
+/* ---- 本板显示 RAM 地址（与上方映射表一一对应）---- */
 /* NOTE: 两组地址不连续：屏 pin 11..16 接的是 SEG13..SEG18，
  *       因此第 4~6 位落在 0x0D..0x12，而不是紧接第 3 位之后的 0x06。 */
 #define HT1621_ADDR_DIGIT123  0x00U  /* 第 1~3 位 A/F/E/D 起址，写 6 字节覆盖 0x00..0x05 */
@@ -79,10 +79,10 @@ void ht1621_init(void);
  * @note   地址在器件内部自动递增，跨 0x1F 不自动回绕，调用方需自行分段。
  * @note   线序按数据手册 WRITE 时序 `101 A5..A0 D0..D3`：地址字段 MSB 先出、
  *         数据半字节 LSB 先出（D0=COM0）；调用方只按上面的 bit0..bit3 语义传值。
- * @note   2026-10-02 实机曾因数据半字节按 MSB 先出而整屏 COM 行镜像
+ * @note   数据半字节若按 MSB 先出会使 4 条 COM 行整体镜像
  *         （状态点显示成 C 段竖条）。改动本函数位序后必须重做 COM 行复验：
  *         向 0x00..0x05、0x0D..0x12 各写 0x1 应点亮 6 条 A 段 + 4 个状态点，
- *         且不出现任何 C 段；映射与实测记录见 docs/hardware.md「段码屏映射」。
+ *         且不出现任何 C 段。
  */
 void ht1621_write(uint8_t addr, const uint8_t *data, uint8_t len);
 
@@ -100,7 +100,7 @@ void ht1621_clear(void);
  *         运行期间不得调用 on=false。
  * @note   on=true 会补发 LCD ON 再 SYS EN，显示内容恢复为 RAM 中的旧值
  *         （SYS EN 单独不能重新打开偏压发生器）。
- *         本板 VLCD 直连电池、未做断电器件；整机功耗预算见 docs/hardware.md。
+ *         本板 VLCD 直连电池、未做断电器件。
  */
 void ht1621_oscillator(bool on);
 

@@ -105,7 +105,7 @@ SECTIONS
 
   /* RAM 溢出保护：.data/.bss 之后必须为栈留出至少 1 KB。
      NOTE: 这里只做链接期检查，不做运行时栈水位检测，
-           栈深度由固件自身约束，见 docs/architecture.md 的栈预算一节。 */
+           栈深度由固件自身约束。 */
   _ram_used_end = .;
   ASSERT(_ram_used_end <= _estack - 0x400, "RAM overflow: 已挤占预留的 1 KB 栈空间")
 }

@@ -1,10 +1,10 @@
 /**
  * @file    test_proto.c
- * @brief   proto 单元测试：serial-protocol.md §5 全部命令的响应字节、
+ * @brief   proto 单元测试：全部命令的响应字节、
  *          字段校验与错误路径。
  *
  * 链路层用真实 uart_link + fake_usart2_hw/plug_detect，响应帧经 fake 捕获后
- * 与 §8 向量（或用逐位 CRC 独立组帧的期望值）逐字节比对；keystore 用真实
+ * 与固定测试向量（或用逐位 CRC 独立组帧的期望值）逐字节比对；keystore 用真实
  * 实现 + fake_nvm（覆盖 EEPROM 失败路径），clock_rtc 用 fake_clock_rtc
  * 提供可控时间、对时状态与校准读数。
  */
@@ -21,15 +21,15 @@
 #include "proto.h"
 #include "uart_link.h"
 
-/* ---- 规范 §8 测试向量（请求帧） ---- */
+/* ---- 测试向量（请求帧） ---- */
 static const uint8_t PING_REQ[] = { 0xaa, 0x01, 0x00, 0x00, 0xac, 0xfb };
 static const uint8_t SET_TIME_REQ[] = {
     0xaa, 0x03, 0x2a, 0x08, 0x00, 0x20, 0xe9, 0xf9, 0xa0, 0x01, 0x00, 0x00, 0x86, 0xcf,
 };
-/* 2026-10-02T00:00:00Z = 1790899200000 ms（§8 对时向量） */
+/* 2026-10-02T00:00:00Z = 1790899200000 ms（对时向量） */
 #define SET_TIME_MS 1790899200000ULL
 
-/* WRITE_SLOT 载荷（§8 向量去掉帧头与 CRC）：algo=1、period=30、
+/* WRITE_SLOT 载荷（向量去掉帧头与 CRC）：algo=1、period=30、
    secret=JBSWY3DPEHPK3PXP（16 字符） */
 static const uint8_t WRITE_PAYLOAD_D6[21] = {
     0x01, 0x06, 0x1e, 0x00, 0x10, 0x4a, 0x42, 0x53, 0x57, 0x59, 0x33,
@@ -59,7 +59,7 @@ static uint16_t ref_crc16(const uint8_t *data, size_t len)
     return crc;
 }
 
-/** 按规范 §4.1 组一帧（含 CRC，小端），返回总字节数 */
+/** 按线格式组一帧（含 CRC，小端），返回总字节数 */
 static size_t build_frame(uint8_t *out, uint8_t cmd, uint8_t seq,
                           const uint8_t *payload, uint8_t len)
 {
@@ -162,7 +162,7 @@ static void put_u64le(uint8_t *p, uint64_t value)
     }
 }
 
-/** 写入 §8 的 digits=6 默认配置并核对响应（config_crc16 = 0xB638） */
+/** 写入 digits=6 默认配置并核对响应（config_crc16 = 0xB638） */
 static void write_default_slot(uint8_t seq)
 {
     CHECK(send_request(PROTO_CMD_WRITE_SLOT, seq, WRITE_PAYLOAD_D6,
@@ -175,13 +175,13 @@ void test_proto(void)
 {
     uint8_t data[16];
 
-    /* ---- PING：§8 向量逐字节一致（uptime=0、flags=0） ---- */
+    /* ---- PING：向量逐字节一致（uptime=0、flags=0） ---- */
     setup();
     CHECK(send_raw(PING_REQ, sizeof PING_REQ));
     CHECK_HEX(fake_usart2_hw_sent(), fake_usart2_hw_sent_len(),
               "aa81000b0001000140000000000000386e");
 
-    /* 带载荷的 PING 属载荷长度错误（§4.5：错误响应只含状态字节） */
+    /* 带载荷的 PING 属载荷长度错误（错误响应只含状态字节） */
     const uint8_t one_byte[1] = { 0x00U };
     CHECK(send_request(PROTO_CMD_PING, 0x07U, one_byte, 1U));
     expect_response(PROTO_CMD_PING, 0x07U, PROTO_ERR_LEN, NULL, 0U);
@@ -198,7 +198,7 @@ void test_proto(void)
     CHECK(send_request(PROTO_CMD_GET_TIME, 0x12U, one_byte, 1U));
     expect_response(PROTO_CMD_GET_TIME, 0x12U, PROTO_ERR_LEN, NULL, 0U);
 
-    /* ---- SET_TIME：§8 向量收帧并写入，响应回读一致 ---- */
+    /* ---- SET_TIME：向量收帧并写入，响应回读一致 ---- */
     setup();
     CHECK(send_raw(SET_TIME_REQ, sizeof SET_TIME_REQ));
     CHECK_HEX(fake_usart2_hw_sent(), fake_usart2_hw_sent_len(),
@@ -220,7 +220,7 @@ void test_proto(void)
     CHECK(send_request(PROTO_CMD_SET_TIME, 0x22U, bad_time, 8U));
     expect_response(PROTO_CMD_SET_TIME, 0x22U, PROTO_ERR_PARAM, NULL, 0U);
 
-    /* ---- GET_STATUS：§8 向量逐字节一致 ---- */
+    /* ---- GET_STATUS：向量逐字节一致 ---- */
     setup();
     s_status.battery_mv = 2900U;
     CHECK(send_request(PROTO_CMD_GET_STATUS, 0x2bU, NULL, 0U));
@@ -271,7 +271,7 @@ void test_proto(void)
     };
     expect_response(PROTO_CMD_PING, 0x31U, PROTO_OK, ping_payload, 10U);
 
-    /* ---- WRITE_SLOT：§8 向量写入 + 幂等 + READ_META 回读 ---- */
+    /* ---- WRITE_SLOT：向量写入 + 幂等 + READ_META 回读 ---- */
     setup();
     write_default_slot(0x01U);
     CHECK(keystore_present());
@@ -285,17 +285,17 @@ void test_proto(void)
     CHECK_HEX(cfg.secret, cfg.secret_len, "48656c6c6f21deadbeef");
     CHECK(cfg.config_crc16 == 0xB638U);
 
-    /* 重传相同配置不产生物理擦写（协议 §4.5 的幂等要求） */
+    /* 重传相同配置不产生物理擦写（幂等要求） */
     const unsigned program_calls = fake_nvm_program_calls();
     write_default_slot(0x02U);
     CHECK(fake_nvm_program_calls() == program_calls);
 
-    /* §8 的 READ_META 响应向量（seq=2，digits=6 配置） */
+    /* READ_META 响应向量（seq=2，digits=6 配置） */
     CHECK(send_request(PROTO_CMD_READ_META, 0x02U, NULL, 0U));
     CHECK_HEX(fake_usart2_hw_sent(), fake_usart2_hw_sent_len(),
               "aa860209000301061e001038b69e9e");
 
-    /* digits=4 的 §8 向量：配置 CRC 0xDD5E */
+    /* digits=4 的向量：配置 CRC 0xDD5E */
     CHECK(send_request(PROTO_CMD_WRITE_SLOT, 0x03U, WRITE_PAYLOAD_D4,
                        sizeof WRITE_PAYLOAD_D4));
     const uint8_t crc_d4[2] = { 0x5eU, 0xddU };
@@ -372,7 +372,7 @@ void test_proto(void)
     CHECK(send_request(PROTO_CMD_READ_META, 0x51U, one_byte, 1U));
     expect_response(PROTO_CMD_READ_META, 0x51U, PROTO_ERR_LEN, NULL, 0U);
 
-    /* ---- ERASE_SLOT：成功后转空配置；EEPROM 失败回 §8 向量 ---- */
+    /* ---- ERASE_SLOT：成功后转空配置；EEPROM 失败走错误响应 ---- */
     setup();
     write_default_slot(0x08U);
     CHECK(send_request(PROTO_CMD_ERASE_SLOT, 0x08U, NULL, 0U));

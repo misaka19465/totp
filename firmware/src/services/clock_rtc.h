@@ -2,19 +2,19 @@
  * @file    clock_rtc.h
  * @brief   RTC 走时服务：LSE 启振、UTC 毫秒读写、对时状态与数字校准。
  *
- * 职责（architecture.md §3 services/clock_rtc）：
+ * 职责：
  *   - 上电时以 LSE 为 RTC 时钟源完成初始化；系统复位（含 IWDG）不打断走时；
  *   - 提供 UTC 毫秒读写：设备侧把毫秒量化到 1/256 s，并用 RTC 移位寄存器
  *     （RTC_SHIFTR，RM0367 §22.4.10）对齐亚秒相位 —— RTC_SSR 是只读的，
  *     不能直接写亚秒计数器（RM0367 §22.7.10）；
- *   - 在 RTC 备份寄存器记录"上次对时"，给出 serial-protocol.md §5.3 的
+ *   - 在 RTC 备份寄存器记录"上次对时"，给出
  *     TRUSTED / NEVER_SET / STALE 标志。备份寄存器无 VBAT 供电：
  *     换电池（RTC 域复位）即失，与 RTC 本身同命运；
- *   - 提供 SET_CALIB 的 0.01 ppm 折算与回读（serial-protocol.md §5.8）。
+ *   - 提供 SET_CALIB 的 0.01 ppm 折算与回读。
  *
  * NOTE: 本模块不做低功耗管理，由调用方（主循环/电源状态机）决定调用时机；
  *       单次读 <1 ms；单次写约 10–20 ms（主要是 SHIFTR 生效等待 ~7.8 ms），
- *       SET_TIME 端到端响应实测 <50 ms，满足协议 §7 的 ≤100 ms 期限。
+ *       SET_TIME 端到端响应实测 <50 ms，满足 ≤100 ms 的响应期限。
  */
 #ifndef CLOCK_RTC_H
 #define CLOCK_RTC_H
@@ -22,15 +22,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* time_flags 位定义，与 serial-protocol.md §5.3 一一对应 */
+/* time_flags 位定义 */
 #define CLOCK_RTC_TIME_TRUSTED   (1U << 0) /**< 已对时，走时可信 */
 #define CLOCK_RTC_TIME_NEVER_SET (1U << 1) /**< 本电池周期内从未对时 */
 #define CLOCK_RTC_TIME_STALE     (1U << 2) /**< 距上次对时超过阈值 */
 
-/** STALE 判定阈值：距上次对时 30 天（serial-protocol.md §5.4） */
+/** STALE 判定阈值：距上次对时 30 天 */
 #define CLOCK_RTC_STALE_AFTER_S (30U * 24U * 3600U)
 
-/* SET_TIME 设备侧自检容差（ms），与 §5.4 上位机判据同值。
+/* SET_TIME 设备侧自检容差（ms），与上位机判据同值。
  * NOTE: 自检只用于识别"写错整秒/写错日历"级别的错误，不承诺毫秒级精度：
  *       回读发生在移位生效之后，且链路单程时延随 USB 转串口链路波动
  *       （实机 2026-10-02：回读 − 发送 ≈ +13 ms，恒定偏置 ≈ −58 ms）。
@@ -72,7 +72,7 @@ uint8_t clock_rtc_time_flags(void);
 uint32_t clock_rtc_last_set_age_s(void);
 
 /**
- * @brief  写入 UTC 毫秒时间并回读校验（SET_TIME，serial-protocol.md §5.4）。
+ * @brief  写入 UTC 毫秒时间并回读校验（SET_TIME）。
  * @param  unix_ms     目标时间；仅支持 2000..2099 年（RTC 年字段限制）。
  * @param  readback_ms 输出设备回读值；可为 NULL。
  * @return 写入后回读误差 ≤ CLOCK_RTC_SET_TOLERANCE_MS 返回 true，
@@ -83,7 +83,7 @@ uint32_t clock_rtc_last_set_age_s(void);
 bool clock_rtc_set_unix_ms(uint64_t unix_ms, uint64_t *readback_ms);
 
 /**
- * @brief  写 RTC 数字校准（SET_CALIB，serial-protocol.md §5.8）。
+ * @brief  写 RTC 数字校准（SET_CALIB）。
  * @param  centi_ppm         请求修正量，0.01 ppm 单位，范围 ±30000；0 = 关闭。
  * @param  applied_centi_ppm 输出回读到的实际生效值；可为 NULL。
  * @return 写入并回读成功返回 true；参数超范围或 RTC 未就绪返回 false。

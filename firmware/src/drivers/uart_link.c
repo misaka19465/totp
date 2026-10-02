@@ -86,7 +86,7 @@ uart_link_state_t uart_link_state(void)
 /**
  * @brief  逐字节推进接收解析器。
  * @return 收完一帧且 CRC 正确返回 true；否则 false。
- * @note   CRC 错帧静默丢弃，从下一个 0xAA 重新开始（规范 §4.4）；
+ * @note   CRC 错帧静默丢弃，从下一个 0xAA 重新开始；
  *         LEN 可达 255，超长帧只计数不存储，CRC 仍覆盖全部载荷。
  */
 static bool rx_feed(uint8_t byte, uint32_t now_ms)
@@ -148,7 +148,7 @@ bool uart_link_poll(uint32_t now_ms, uart_link_frame_t *frame_out)
         uart_link_wake(now_ms);
     }
 
-    /* 先丢弃已超时的残帧，再收新字节：否则重传帧会被残帧解析器吞掉（§4.4） */
+    /* 先丢弃已超时的残帧，再收新字节：否则重传帧会被残帧解析器吞掉 */
     if (s_rx.state != RX_WAIT_SOF &&
         (uint32_t)(now_ms - s_rx.frame_start_ms) >= UART_LINK_FRAME_TIMEOUT_MS) {
         rx_reset();

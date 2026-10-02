@@ -6,7 +6,7 @@
  * 该接口与实现分离，主机侧测试用 fake_usart2_hw.c 替换（同 fake_ht1621 模式）。
  *
  * NOTE: 115200 需要 HSI16（16 MHz）作为 USART2 时钟；休眠时 USART2 与 HSI16
- *       全部关闭，PA9 输出高、PA10 上拉输入，见 docs/serial-protocol.md §2.2。
+ *       全部关闭，PA9 输出高、PA10 上拉输入。
  */
 #ifndef USART2_HW_H
 #define USART2_HW_H

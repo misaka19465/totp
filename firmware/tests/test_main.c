@@ -4,7 +4,7 @@
  *          lcd_render 的字形与落屏行为、uart_link 的帧与链路状态机，
  *          keystore 的单槽持久化语义（CRC、幂等、失败回滚），
  *          rtc_time 的日历/亚秒/校准折算，以及 proto 的命令分派、
- *          字段校验与 §8 响应向量，state_indicator 的状态点策略，
+ *          字段校验与响应向量，state_indicator 的状态点策略，
  *          watchdog 的复位原因归并。
  */
 #include <stdio.h>
