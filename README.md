@@ -56,6 +56,17 @@ cmake --build build
 cmake --build build --target flash
 ```
 
+### 主机侧单元测试
+
+`firmware/tests/` 用 RFC 4648 / 2202 / 4226 / 6238 官方向量校验纯计算模块
+（Base32 解码、HMAC-SHA1、HOTP/TOTP），不依赖硬件与交叉工具链：
+
+```bash
+cmake -S firmware/tests -B firmware/tests/build
+cmake --build firmware/tests/build
+ctest --test-dir firmware/tests/build --output-on-failure
+```
+
 ## 硬件注意事项
 
 以下三条是从原理图与器件手册中查出、且**会影响设计决策**的问题，
@@ -70,5 +81,8 @@ cmake --build build --target flash
 
 ## 状态
 
-initial commit —— 已完成项目骨架、构建系统（已验证可编译出可运行固件）与设计文档；
-功能代码尚未实现。落地顺序见 `docs/architecture.md` §10。
+- 已完成项目骨架、构建系统（已验证可编译出可运行固件）与设计文档；
+- 已完成 App 层口令计算核心 `app/base32`、`app/hmac_sha1`、`app/totp`，
+  含主机侧 RFC 向量测试（92 项断言，全绿）；
+- 其余功能（渲染、RTC/电源/看门狗、keystore/proto、配置工具）尚未实现，
+  落地顺序见 `docs/architecture.md` §10。

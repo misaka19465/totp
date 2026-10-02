@@ -62,6 +62,9 @@ target_link_libraries(hal_l0 PUBLIC vendor_cmsis)
 add_executable(totp_token.elf
   startup/startup_stm32l031.s
   src/main.c
+  src/app/base32.c
+  src/app/hmac_sha1.c
+  src/app/totp.c
   src/drivers/battery.c
   src/drivers/ht1621.c
 )
@@ -75,6 +78,7 @@ target_compile_options(totp_token.elf PRIVATE
 
 target_include_directories(totp_token.elf PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/app
   ${CMAKE_CURRENT_SOURCE_DIR}/src/board
   ${CMAKE_CURRENT_SOURCE_DIR}/src/drivers
   ${CMAKE_CURRENT_SOURCE_DIR}/src/hal
