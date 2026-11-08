@@ -114,8 +114,8 @@ python3 -m venv ../provision/.venv
 活动前运行一条命令即可完成配置与验收：
 
 ```bash
-../provision/.venv/bin/python ../provision/provision.py --device totp setup
-../provision/.venv/bin/python ../provision/provision.py --device totp setup JBSWY3DPEHPK3PXP
+../provision/.venv/bin/python ../provision/provision.py setup
+../provision/.venv/bin/python ../provision/provision.py setup JBSWY3DPEHPK3PXP
 ```
 
 `setup` 执行完整流程：写种子 → READ_META 字段与 CRC 回读比对 → 对时命令回读 → 读取状态。
@@ -126,10 +126,10 @@ python3 -m venv ../provision/.venv
 需要单独操作时，也可以分步执行：
 
 ```bash
-../provision/.venv/bin/python ../provision/provision.py --device totp ping
-../provision/.venv/bin/python ../provision/provision.py --device totp set-time
-../provision/.venv/bin/python ../provision/provision.py --device totp write-seed --digits 6 --period 30
-../provision/.venv/bin/python ../provision/provision.py --device totp write-seed JBSWY3DPEHPK3PXP
+../provision/.venv/bin/python ../provision/provision.py ping
+../provision/.venv/bin/python ../provision/provision.py set-time
+../provision/.venv/bin/python ../provision/provision.py write-seed --digits 6 --period 30
+../provision/.venv/bin/python ../provision/provision.py write-seed JBSWY3DPEHPK3PXP
 ```
 
 子命令一览：
@@ -146,7 +146,7 @@ python3 -m venv ../provision/.venv
 | `set-calib` | 写入 RTC 校准值（0.01 ppm，0 表示关闭） |
 | `setup` | 完整配置与验收流程（不给种子则随机生成） |
 
-- `--digits` 取 1–6，`--period` 取 15–300 秒，`--random-bytes` 取 1–35（默认 20）。
+- `--digits` 取 1–6，`--period` 取 15–300 秒（与 UV-K5 共用默认值 60 秒），`--random-bytes` 取 1–35（默认 20）。
 - `--port` 缺省时自动探测 USB 串口，也可以用环境变量 `TOTP_PORT` 指定。
 
 ### 接线
