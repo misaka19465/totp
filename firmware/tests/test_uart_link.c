@@ -2,7 +2,7 @@
  * @file    test_uart_link.c
  * @brief   uart_link 单元测试：CRC、组帧、解析/重同步、超时与会话状态机。
  *
- * 帧字节取自固定测试向量（由 tools/provision 的 Python 参考实现生成）；
+ * NOTE: 帧字节取自固定测试向量（由同级 provision 项目的 Python 参考实现生成）；
  * 构造的超长/坏 CRC 帧用逐位 CRC 独立生成，
  * 与实现的半字节表算法交叉校验。
  */

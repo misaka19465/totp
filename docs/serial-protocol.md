@@ -4,7 +4,7 @@
 物理层是 3.5 mm 耳机口上的 UART（Universal Asynchronous Receiver/Transmitter，通用异步收发器）。
 
 - 线协议版本为 1，由 PING 响应的 `proto_ver` 字段报告。
-- 参考实现：`tools/provision/protocol.py`（编解码）与 `tools/provision/session.py`（会话）。
+- 参考实现：`../../provision/protocol.py`（编解码）与 `../../provision/session.py`（会话）。
 - 固件实现：`firmware/src/drivers/uart_link.*`（链路层）与 `firmware/src/app/proto.*`（命令层）。
 - 设计前提：设备无按键，也不是安全设备。协议没有鉴权、加密与防重放，CRC 只防误码。
 
@@ -16,11 +16,11 @@
 | RING1 | UART_RX | 上位机 → 设备 |
 | SLEEVE | GND | — |
 
-- 波特率固定为 115200，帧格式 8N1，无流控。
+- 波特率固定为 38400，帧格式 8N1，无流控。
 - RING2 与 SLEEVE 同接 GND，TRS 与 TRRS 插头都能用。
 - TX/RX 引脚为 5 V 容限，可直连 5 V 或 3.3 V 的 USB-TTL 适配器。
 - 设备只回响应，从不主动发送。
-- 字节可以连续发送，不必留间隔。设备用中断收字节，缓冲 96 B（约 8 ms 线上时间）。
+- 字节可以连续发送，不必留间隔。设备用中断收字节，缓冲 96 B（约 25 ms 线上时间）。
 - 多字节字段一律小端，与 Cortex-M 一致。
 - 本版耳机口没有电气保护器件。
 
@@ -322,18 +322,17 @@ GET_STATUS 的 `reset_cause` 取值：
 参考工具按以下步骤完成一次配置，每一步都要核对：
 
 1. PING：核对 `proto_ver == 1`，且 `max_payload ≥ 61`。
-2. SET_TIME：发送当前 UTC 毫秒，回读误差在 ±100 ms 以内。
-3. WRITE_SLOT：核对响应中的 `config_crc16` 与上位机复算值一致。
-4. READ_META：核对标志位、算法、位数、周期、字符数与 `config_crc16`。
-5. 屏上比对：上位机按 RFC 6238 算出当前口令，操作员与设备屏上数字比对；随后用 GET_STATUS 记录最终状态。
+2. WRITE_SLOT：核对响应中的 `config_crc16` 与上位机复算值一致。
+3. READ_META：核对标志位、算法、位数、周期、字符数与 `config_crc16`。
+4. SET_TIME：发送当前 UTC 毫秒，回读误差在 ±100 ms 以内。
+5. 状态回读：上位机用 GET_STATUS 记录最终设备状态。
 
-`setup` 子命令执行以上全流程；`--yes` 跳过第 5 步的人工比对，供脚本使用。
+`setup` 子命令执行以上全流程。WRITE_SLOT 响应、READ_META 字段和配置 CRC、SET_TIME 响应及 GET_STATUS 均由工具检查，不需要人工听码或对屏幕读数。
 不指定种子时，参考工具生成 20 字节（160 bit）随机种子，并在写入前打印一次供登记。
-比对时应避开窗口末尾，参考实现会在剩余不足 5 s 时等到下一个窗口。
 
 ## 9 测试向量
 
-以下字节流由 `tools/provision/test_protocol.py` 固定，改动协议时必须同步更新。
+以下字节流由 `../../provision/test_protocol.py` 固定，改动协议时必须同步更新。
 
 PING 请求，SEQ = 0：
 

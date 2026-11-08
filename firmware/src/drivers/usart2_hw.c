@@ -1,6 +1,6 @@
 /**
  * @file    usart2_hw.c
- * @brief   耳机口 USART2 寄存器级传输实现（PA9=TX / PA10=RX，HSI16，115200）。
+ * @brief   耳机口 USART2 寄存器级传输实现（PA9=TX / PA10=RX，HSI16，38400）。
  */
 #include "usart2_hw.h"
 
@@ -9,16 +9,14 @@
 #include "board_pins.h"
 #include "stm32l031xx.h"
 
-/* NOTE: HSI16 = 16 MHz，OVER8=0 时 BRR = fCK / 波特率 = 16e6 / 115200 ≈ 138.9，
- *       取最接近的 139：实际 115108 Bd，误差 -0.08%，远小于 8N1 容差。 */
-#define USART2_BRR_115200   139U
+/* NOTE: HSI16 为 16 MHz；OVER8=0 时 BRR = 16e6 / 38400 ≈ 416.7，取 417。 */
+#define USART2_BRR_38400    417U
 #define USART2_AF_USART2    4U
 
-/* NOTE: 线上连续字节间隔 = 10 bit / 115200 ≈ 87 µs，而主循环一圈（RTC 读 +
- *       喂狗 + 调度）明显长于一个字节时间；USART2 无 FIFO，纯轮询收必然
- *       ORE 丢字节（2026-10-02 实机：连续帧无响应、2 ms 间隔帧正常）。
+/* NOTE: 线上连续字节间隔 = 10 bit / 38400 ≈ 260 µs；主循环包含 RTC 读、喂狗
+ *       和调度，轮询收仍可能跨过字节时间。USART2 无 FIFO，延迟读取会产生 ORE；
  *       故 RXNE 中断把字节落环形缓冲，解析器按主循环节奏取用；
- *       96 B ≈ 8 ms 线上余量，可吸收一次 TOTP 计算（HMAC-SHA1）期间的到达。 */
+ *       96 B ≈ 25 ms 线上余量，可吸收一次 TOTP 计算（HMAC-SHA1）期间的到达。 */
 #define USART2_RX_RING_SIZE 96U
 
 static bool s_on = false;
@@ -109,7 +107,7 @@ void usart2_hw_power_on(void)
     s_rx_tail = 0U;
 
     USART2->CR1 = 0U;
-    USART2->BRR = USART2_BRR_115200;
+    USART2->BRR = USART2_BRR_38400;
     USART2->CR2 = 0U;   /* 1 停止位，无 LIN/同步模式 */
     USART2->CR3 = 0U;   /* 无流控 */
     USART2->ICR = USART_ICR_ORECF | USART_ICR_FECF | USART_ICR_NCF |

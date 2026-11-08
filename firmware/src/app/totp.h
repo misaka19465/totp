@@ -51,7 +51,7 @@ bool totp_generate(const uint8_t *secret, size_t secret_len,
  * @param  unix_seconds UTC 整秒。
  * @param  period_s     步长（秒）；为 0 时返回 0。
  * @return period_s - (unix_seconds mod period_s)，取值范围 1..period_s。
- * @note   配置工具用它决定"屏上码比对"的时机。
+ * @note   配置工具可用它计算当前时间窗内的有效口令。
  */
 uint32_t totp_seconds_remaining(uint64_t unix_seconds, uint32_t period_s);
 

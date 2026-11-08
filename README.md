@@ -53,8 +53,9 @@ firmware/           固件（C，交叉编译到 STM32L031）
   src/drivers/      段码屏、串口、EEPROM、电量等驱动
   src/services/     走时、电源、看门狗、状态指示
   tests/            主机侧单元测试
-tools/provision/    上位机配置工具（Python 3）
 ```
+
+上位机配置工具单独维护在同级 `../provision/` 项目中，两个固件共用同一份协议实现。
 
 `firmware/vendor/` 存放首次构建时自动拉取的三方依赖，不进入版本库。
 
@@ -98,7 +99,7 @@ ctest --test-dir firmware/tests/build --output-on-failure
 配置工具测试：
 
 ```bash
-python3 -m unittest discover -s tools/provision -v
+python3 -m unittest discover -s ../provision -v
 ```
 
 ## 配置工具
@@ -106,28 +107,29 @@ python3 -m unittest discover -s tools/provision -v
 工具依赖 `pyserial`：
 
 ```bash
-python3 -m pip install pyserial
+python3 -m venv ../provision/.venv
+../provision/.venv/bin/pip install -r ../provision/requirements.txt
 ```
 
 活动前运行一条命令即可完成配置与验收：
 
 ```bash
-./tools/provision/provision.py setup                    # 生成随机种子并打印
-./tools/provision/provision.py setup JBSWY3DPEHPK3PXP   # 也可指定固定种子（示例）
+../provision/.venv/bin/python ../provision/provision.py --device totp setup
+../provision/.venv/bin/python ../provision/provision.py --device totp setup JBSWY3DPEHPK3PXP
 ```
 
-`setup` 执行完整流程：对时 → 写种子 → 读回比对 → 人工比对屏上码 → 读取状态。
-工具会打印当前口令，操作员与屏上数字核对；`--yes` 跳过人工比对，适合脚本调用。
+`setup` 执行完整流程：写种子 → READ_META 字段与 CRC 回读比对 → 对时命令回读 → 读取状态。
+配置结果由设备命令响应核验，不需要人工听码或对屏幕读数。
 省略种子时工具用系统安全随机源生成 20 字节（160 bit）种子，写入前打印一次，
 需立即登记到服务器；写入后工具不再回显。
 
 需要单独操作时，也可以分步执行：
 
 ```bash
-./tools/provision/provision.py ping
-./tools/provision/provision.py set-time
-./tools/provision/provision.py write-seed --digits 6 --period 30   # 随机种子
-./tools/provision/provision.py write-seed JBSWY3DPEHPK3PXP         # 指定种子
+../provision/.venv/bin/python ../provision/provision.py --device totp ping
+../provision/.venv/bin/python ../provision/provision.py --device totp set-time
+../provision/.venv/bin/python ../provision/provision.py --device totp write-seed --digits 6 --period 30
+../provision/.venv/bin/python ../provision/provision.py --device totp write-seed JBSWY3DPEHPK3PXP
 ```
 
 子命令一览：
@@ -162,13 +164,15 @@ python3 -m pip install pyserial
 
 ## 串口协议
 
-- 物理层：115200 8N1。
+- 物理层：38400 8N1。
 - 帧格式：帧头 `0xAA`，CRC-16（16 位循环冗余校验），载荷上限 64 B。
 - 设备只回响应，不主动发送；所有多字节字段小端。
 - 设备空闲时休眠；接收线出现下降沿即唤醒；会话闲置 10 秒后自动回睡。
 - 协议没有鉴权与加密，只防误码，不防攻击。
 
 完整规范见 `docs/serial-protocol.md`。
+
+使用新配置工具前，已有 TOTP 设备需要重新烧录本版固件以采用统一的 38400 速率。
 
 ## 项目状态
 

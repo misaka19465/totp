@@ -77,8 +77,8 @@ uint32_t clock_rtc_last_set_age_s(void);
  * @param  readback_ms 输出设备回读值；可为 NULL。
  * @return 写入后回读误差 ≤ CLOCK_RTC_SET_TOLERANCE_MS 返回 true，
  *         此时"上次对时"更新为 unix_ms；否则返回 false 且不改变对时状态。
- * @note   写入路径实测约 10–20 ms（SHIFTR 生效等待 ~7.8 ms 为主），
- *         SET_TIME 端到端响应 <50 ms（含 115200 链路往返）。
+ * @note   写入路径实测约 10–20 ms（SHIFTR 生效等待 ~7.8 ms 为主）；
+ *         SET_TIME 端到端延迟另含 38400 串口的帧传输时间。
  */
 bool clock_rtc_set_unix_ms(uint64_t unix_ms, uint64_t *readback_ms);
 
