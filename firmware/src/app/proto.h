@@ -40,6 +40,8 @@ typedef enum {
     PROTO_CMD_READ_META  = 0x06,
     PROTO_CMD_ERASE_SLOT = 0x07,
     PROTO_CMD_SET_CALIB  = 0x08,
+    PROTO_CMD_GET_CW     = 0x09,
+    PROTO_CMD_SET_CW     = 0x0A,
 } proto_cmd_t;
 
 /** 响应状态码；0x02 保留：CRC 错帧设备静默丢弃、从不发送 */

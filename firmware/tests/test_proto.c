@@ -412,10 +412,25 @@ void test_proto(void)
     CHECK(send_request(PROTO_CMD_SET_CALIB, 0x64U, calib, 2U));
     expect_response(PROTO_CMD_SET_CALIB, 0x64U, PROTO_ERR_INTERNAL, NULL, 0U);
 
-    /* ---- 未知命令（0x09..0x7F 与响应码 0x80..0xFF） ---- */
+    /* ---- 可选 CW 扩展：数显设备明确拒绝，不改变种子或 RTC。 ---- */
     setup();
-    CHECK(send_request(0x09U, 0x70U, NULL, 0U));
-    expect_response(0x09U, 0x70U, PROTO_ERR_UNKNOWN_CMD, NULL, 0U);
+    write_default_slot(0x65U);
+    CHECK(send_request(PROTO_CMD_GET_CW, 0x66U, NULL, 0U));
+    expect_response(PROTO_CMD_GET_CW, 0x66U, PROTO_ERR_UNSUPPORTED, NULL, 0U);
+    const uint8_t cw_config[3] = { 12U, 0x84U, 0x03U };
+    CHECK(send_request(PROTO_CMD_SET_CW, 0x67U, cw_config, 3U));
+    expect_response(PROTO_CMD_SET_CW, 0x67U, PROTO_ERR_UNSUPPORTED, NULL, 0U);
+    CHECK(keystore_present());
+    CHECK(fake_clock_rtc_last_calib_arg() == 0);
+    CHECK(send_request(PROTO_CMD_GET_CW, 0x68U, one_byte, 1U));
+    expect_response(PROTO_CMD_GET_CW, 0x68U, PROTO_ERR_LEN, NULL, 0U);
+    CHECK(send_request(PROTO_CMD_SET_CW, 0x69U, cw_config, 2U));
+    expect_response(PROTO_CMD_SET_CW, 0x69U, PROTO_ERR_LEN, NULL, 0U);
+
+    /* ---- 未知命令（0x0B..0x7F 与响应码 0x80..0xFF） ---- */
+    setup();
+    CHECK(send_request(0x0BU, 0x70U, NULL, 0U));
+    expect_response(0x0BU, 0x70U, PROTO_ERR_UNKNOWN_CMD, NULL, 0U);
 
     CHECK(send_request(0x80U, 0x71U, NULL, 0U));
     expect_response(0x80U, 0x71U, PROTO_ERR_UNKNOWN_CMD, NULL, 0U);

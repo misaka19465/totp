@@ -304,6 +304,14 @@ bool proto_handle_request(const uart_link_frame_t *request,
     case PROTO_CMD_READ_META:  sent = handle_read_meta(request); break;
     case PROTO_CMD_ERASE_SLOT: sent = handle_erase_slot(request); break;
     case PROTO_CMD_SET_CALIB:  sent = handle_set_calib(request); break;
+    case PROTO_CMD_GET_CW:
+        sent = respond(request, request->len == 0U ? PROTO_ERR_UNSUPPORTED :
+                       PROTO_ERR_LEN, NULL, 0U);
+        break;
+    case PROTO_CMD_SET_CW:
+        sent = respond(request, request->len == 3U ? PROTO_ERR_UNSUPPORTED :
+                       PROTO_ERR_LEN, NULL, 0U);
+        break;
     default:
         sent = respond(request, PROTO_ERR_UNKNOWN_CMD, NULL, 0U);
         break;
