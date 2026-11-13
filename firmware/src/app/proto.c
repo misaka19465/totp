@@ -309,7 +309,7 @@ bool proto_handle_request(const uart_link_frame_t *request,
                        PROTO_ERR_LEN, NULL, 0U);
         break;
     case PROTO_CMD_SET_CW:
-        sent = respond(request, request->len == 3U ? PROTO_ERR_UNSUPPORTED :
+        sent = respond(request, request->len == 5U ? PROTO_ERR_UNSUPPORTED :
                        PROTO_ERR_LEN, NULL, 0U);
         break;
     default:

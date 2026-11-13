@@ -130,7 +130,7 @@ stateDiagram-v2
 | ERASE_SLOT | `0x07` | 无 | 无 | 删除点位配置 |
 | SET_CALIB | `0x08` | 2 B | 2 B | 写 RTC 校准值 |
 | GET_CW（可选扩展） | `0x09` | 无 | 本设备返回 ERR_UNSUPPORTED | 读取 CW 播放参数 |
-| SET_CW（可选扩展） | `0x0A` | 3 B | 本设备返回 ERR_UNSUPPORTED | 保存 CW 播放参数 |
+| SET_CW（可选扩展） | `0x0A` | 5 B | 本设备返回 ERR_UNSUPPORTED | 保存 CW 播放参数 |
 
 对已知命令，除 WRITE_SLOT 之外，请求载荷长度必须精确匹配；否则设备回 ERR_LEN。
 
@@ -256,7 +256,7 @@ EEPROM 擦除失败时回 ERR_EEPROM。
 
 ### 5.9 可选 CW 扩展（0x09 / 0x0A）
 
-GET_CW 无请求载荷；SET_CW 请求为 `u8 wpm, u16 tone_hz`，多字节字段小端。数显设备没有 CW 播放功能，对正确长度的这两个命令返回 `ERR_UNSUPPORTED`，长度不符返回 `ERR_LEN`，不修改种子、RTC 或存储。普通 `setup` 不发送本扩展，不要求设置 WPM 或 TONE。支持该扩展的 UV-K5 未配置时使用原值 8 WPM、700 Hz；完整字段、范围及兼容语义见 [可选 CW 播放配置扩展](../../provision/docs/cw-protocol.md)。
+GET_CW 无请求载荷；SET_CW 请求为 `u8 wpm, u16 tone_hz, u8 dash_dits, u8 char_space_dits`，多字节字段小端。数显设备没有 CW 播放功能，对正确长度的命令返回 `ERR_UNSUPPORTED`，长度不符返回 `ERR_LEN`，不修改种子、RTC 或存储。普通 `setup` 不发送本扩展。支持该扩展的 UV-K5 未配置时为 8 WPM、700 Hz、DASH 3 dit 和 Character Space 3 dit；完整字段、范围及错误语义见 [可选 CW 播放配置扩展](../../provision/docs/cw-protocol.md)。
 
 ## 6 状态码
 
